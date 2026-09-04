@@ -1,14 +1,11 @@
 ---
-slug: "bolo-de-fuba"
-title: "Bolo de Fubá"
-preco: 18.00
-codigo: "003"
-em_promocao: false
+slug: bolo-de-fuba
+title: Bolo de Fubá
+preco: 18
 foto: /img/foto-padaria.jpg
-descricao: "Bolo de fubá cremoso, receita da casa."
-cores: ""
-tamanho: "Inteiro (aprox. 800g)"
-categoria: "Doces e Bolos"
+descricao: Bolo de fubá cremoso, receita da casa.
+tamanho: Inteiro (aprox. 800g)
+categoria: Bike
 estoque: 10
 ativo: true
 peso: 1
