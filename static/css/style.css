@@ -1,8 +1,8 @@
 :root {
-  --primary: #8B4513;
-  --secondary: #F5DEB3;
+  --primary: #2E7D32;
+  --secondary: #C8E6C9;
   --card-bg: #FFFFFF;
-  --text: #4A2C13;
+  --text: #1B4332;
 }
 
 * {
@@ -37,7 +37,7 @@ body {
   border-radius: 50%;
   object-fit: cover;
   border: 3px solid var(--primary);
-  box-shadow: 0 4px 12px rgba(139, 69, 19, 0.25);
+  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.25);
   background: #fff;
 }
 
@@ -66,7 +66,7 @@ h1 {
 }
 
 .social-icons a:hover {
-  color: #5c2e0c;
+  color: #1B5E20;
   transform: translateY(-2px);
 }
 
@@ -88,13 +88,13 @@ h1 {
   color: var(--primary);
   font-weight: 600;
   text-decoration: none;
-  box-shadow: 0 3px 10px rgba(139, 69, 19, 0.15);
+  box-shadow: 0 3px 10px rgba(46, 125, 50, 0.15);
   transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
 .link-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(139, 69, 19, 0.25);
+  box-shadow: 0 6px 16px rgba(46, 125, 50, 0.25);
   background: var(--secondary);
 }
 
