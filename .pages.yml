@@ -25,6 +25,9 @@ content:
       - name: "whatsapp_url"
         label: "URL do WhatsApp"
         type: "string"
+      - name: "chave_pix"
+        label: "Chave Pix (ou Pix copia e cola)"
+        type: "string"
       - name: "tema_cor"
         label: "Tema de cor do site"
         type: "select"
@@ -66,6 +69,94 @@ content:
       - name: "icone"
         label: "Ícone (classe Font Awesome, opcional)"
         type: "string"
+      - name: "peso"
+        label: "Ordem de exibição"
+        type: "number"
+      - name: "_build"
+        label: false
+        hidden: true
+        type: "object"
+        default:
+          render: "never"
+          list: "local"
+        fields:
+          - name: "render"
+            label: false
+            type: "string"
+            default: "never"
+            hidden: true
+          - name: "list"
+            label: false
+            type: "string"
+            default: "local"
+            hidden: true
+
+  - name: "categorias"
+    label: "Categorias do Catálogo"
+    type: "collection"
+    path: "content/categorias"
+    format: "yaml-frontmatter"
+    view:
+      primary: "title"
+      default:
+        sort: "title"
+        order: "asc"
+    fields:
+      - name: "title"
+        label: "Nome da categoria"
+        type: "string"
+        required: true
+      - name: "ativo"
+        label: "Categoria ativa (desligue para esconder todos os produtos dela de uma vez)"
+        type: "boolean"
+        default: true
+
+  - name: "produtos"
+    label: "Produtos do Catálogo"
+    type: "collection"
+    path: "content/produtos"
+    format: "yaml-frontmatter"
+    view:
+      primary: "title"
+      default:
+        sort: "peso"
+        order: "asc"
+    fields:
+      - name: "slug"
+        label: "Identificador (slug)"
+        type: "string"
+        required: true
+      - name: "title"
+        label: "Nome do produto"
+        type: "string"
+        required: true
+      - name: "preco"
+        label: "Preço (em reais, ex: 12.50)"
+        type: "number"
+        required: true
+      - name: "foto"
+        label: "Foto do produto"
+        type: "image"
+      - name: "descricao"
+        label: "Descrição"
+        type: "text"
+      - name: "cores"
+        label: "Cores disponíveis (texto livre, ex: Azul, Verde)"
+        type: "string"
+      - name: "tamanho"
+        label: "Tamanhos disponíveis (texto livre, ex: P, M, G)"
+        type: "string"
+      - name: "categoria"
+        label: "Categoria (precisa ser igual ao nome de uma categoria cadastrada)"
+        type: "string"
+        required: true
+      - name: "estoque"
+        label: "Estoque (apenas informativo)"
+        type: "number"
+      - name: "ativo"
+        label: "Produto ativo (aparece no catálogo)"
+        type: "boolean"
+        default: true
       - name: "peso"
         label: "Ordem de exibição"
         type: "number"

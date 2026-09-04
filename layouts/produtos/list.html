@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo · {{ .Site.Home.Title }}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="{{ "css/style.css" | relURL }}">
+  {{ partial "theme-style.html" . }}
+</head>
+<body>
+  <main class="catalog-page">
+    <a class="back-link" href="{{ .Site.Home.RelPermalink }}"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
+    <h1>Catálogo</h1>
+
+    {{ $catSection := .Site.GetPage "categorias" }}
+    {{ $activeCats := slice }}
+    {{ if $catSection }}
+      {{ $activeCats = sort (where $catSection.Pages "Params.ativo" true) "Title" }}
+    {{ end }}
+
+    {{ $hasProducts := false }}
+    {{ range $activeCats }}
+      {{ $catTitle := .Title }}
+      {{ $prods := sort (where (where $.Pages "Params.categoria" $catTitle) "Params.ativo" true) "Params.peso" }}
+      {{ if $prods }}
+        {{ $hasProducts = true }}
+      <section class="categoria-group">
+        <h2>{{ $catTitle }}</h2>
+        <div class="product-grid">
+          {{ range $prods }}
+          <div class="product-card">
+            {{ with .Params.foto }}<img class="product-photo" src="{{ . | relURL }}" alt="{{ $.Title }}" loading="lazy">{{ end }}
+            <div class="product-info">
+              <h3>{{ .Title }}</h3>
+              {{ with .Params.descricao }}<p class="product-desc">{{ . }}</p>{{ end }}
+              {{ with .Params.cores }}<p class="product-meta"><strong>Cores:</strong> {{ . }}</p>{{ end }}
+              {{ with .Params.tamanho }}<p class="product-meta"><strong>Tamanho:</strong> {{ . }}</p>{{ end }}
+              <p class="product-price">{{ printf "R$ %.2f" .Params.preco | replaceRE "\\." "," }}</p>
+              <button type="button" class="btn-add-cart" data-slug="{{ .Params.slug }}" data-title="{{ .Title }}" data-preco="{{ .Params.preco }}">
+                <i class="fa-solid fa-cart-plus"></i> Adicionar ao carrinho
+              </button>
+            </div>
+          </div>
+          {{ end }}
+        </div>
+      </section>
+      {{ end }}
+    {{ end }}
+
+    {{ if not $hasProducts }}
+    <p class="catalog-empty">Nenhum produto disponível no momento.</p>
+    {{ end }}
+  </main>
+
+  {{ $waNumber := replaceRE "[^0-9]" "" (.Site.Home.Params.whatsapp_url | default "") }}
+  {{ $pixKey := .Site.Home.Params.chave_pix | default "" }}
+
+  <div id="cart-app" data-wa-number="{{ $waNumber }}" data-pix-key="{{ $pixKey }}">
+    <button type="button" id="cart-toggle" class="cart-fab" aria-label="Abrir carrinho">
+      <i class="fa-solid fa-cart-shopping"></i>
+      <span id="cart-badge" class="cart-badge" hidden>0</span>
+    </button>
+
+    <div id="cart-overlay" class="cart-overlay" hidden></div>
+
+    <aside id="cart-panel" class="cart-panel">
+      <div class="cart-panel-header">
+        <h2>Seu carrinho</h2>
+        <button type="button" id="cart-close" class="cart-close" aria-label="Fechar carrinho">&times;</button>
+      </div>
+
+      <div id="cart-items" class="cart-items"></div>
+      <p id="cart-empty" class="cart-empty">Seu carrinho está vazio.</p>
+
+      <div class="cart-total-row">
+        <span>Subtotal</span>
+        <strong id="cart-total">R$ 0,00</strong>
+      </div>
+
+      {{ if $pixKey }}
+      <div class="pix-box">
+        <p class="pix-label"><strong>Chave Pix:</strong></p>
+        <div class="pix-key-row">
+          <code id="pix-key-text">{{ $pixKey }}</code>
+          <button type="button" id="pix-copy-btn" class="btn-pix-copy">Copiar</button>
+        </div>
+      </div>
+      {{ end }}
+
+      <div class="cart-actions">
+        <button type="button" id="btn-send-order" class="btn-checkout btn-checkout-whatsapp">
+          <i class="fa-brands fa-whatsapp"></i> Enviar pedido pelo WhatsApp
+        </button>
+        <button type="button" id="btn-send-paid" class="btn-checkout btn-checkout-pix">
+          <i class="fa-solid fa-check"></i> Já paguei via Pix — enviar pedido
+        </button>
+      </div>
+    </aside>
+  </div>
+
+  <script src="{{ "js/cart.js" | relURL }}"></script>
+</body>
+</html>
