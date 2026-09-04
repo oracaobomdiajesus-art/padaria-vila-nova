@@ -7,6 +7,22 @@
   <meta name="description" content="{{ .Params.bio }}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link rel="stylesheet" href="{{ "css/style.css" | relURL }}">
+  {{ $tema := .Params.tema_cor | default "marrom" }}
+  {{ if ne $tema "marrom" }}
+    {{ $temas := dict
+      "verde" (dict "primary" "#2E7D32" "secondary" "#C8E6C9")
+      "rosa" (dict "primary" "#AD1457" "secondary" "#F8BBD0")
+      "azul" (dict "primary" "#1565C0" "secondary" "#BBDEFB")
+    }}
+    {{ with index $temas $tema }}
+  <style>
+    :root {
+      --primary: {{ .primary }};
+      --secondary: {{ .secondary }};
+    }
+  </style>
+    {{ end }}
+  {{ end }}
 </head>
 <body>
   <main class="profile-card">

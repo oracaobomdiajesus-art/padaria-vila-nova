@@ -25,6 +25,20 @@ content:
       - name: "whatsapp_url"
         label: "URL do WhatsApp"
         type: "string"
+      - name: "tema_cor"
+        label: "Tema de cor do site"
+        type: "select"
+        default: "marrom"
+        options:
+          values:
+            - value: "marrom"
+              label: "Marrom/Bege (padrão)"
+            - value: "verde"
+              label: "Verde"
+            - value: "rosa"
+              label: "Rosa"
+            - value: "azul"
+              label: "Azul"
 
   - name: "links"
     label: "Links"
