@@ -28,7 +28,7 @@
     }, 0);
   }
 
-  function addToCart(slug, title, preco) {
+  function addToCart(slug, title, preco, codigo) {
     var cart = loadCart();
     var existing = null;
     for (var i = 0; i < cart.length; i++) {
@@ -40,7 +40,7 @@
     if (existing) {
       existing.qty += 1;
     } else {
-      cart.push({ slug: slug, title: title, preco: preco, qty: 1 });
+      cart.push({ slug: slug, title: title, preco: preco, codigo: codigo || '', qty: 1 });
     }
     saveCart(cart);
     renderCart();
@@ -91,7 +91,8 @@
   function buildMessage(cart, paid) {
     var lines = ['Olá! Gostaria de fazer o seguinte pedido:', ''];
     cart.forEach(function (item) {
-      lines.push('- ' + item.qty + 'x ' + item.title + ' (' + formatPrice(item.preco * item.qty) + ')');
+      var codigoPrefix = item.codigo ? '#' + item.codigo + ' - ' : '';
+      lines.push('- ' + codigoPrefix + item.title + ' x' + item.qty + ' - ' + formatPrice(item.preco * item.qty));
     });
     lines.push('');
     lines.push('Subtotal: ' + formatPrice(cartTotal(cart)));
@@ -159,7 +160,7 @@
 
         var name = document.createElement('span');
         name.className = 'cart-item-name';
-        name.textContent = item.title;
+        name.textContent = (item.codigo ? '#' + item.codigo + ' - ' : '') + item.title;
 
         var controls = document.createElement('div');
         controls.className = 'cart-item-controls';
@@ -287,7 +288,7 @@
     var addButtons = document.querySelectorAll('.btn-add-cart');
     addButtons.forEach(function (btn) {
       btn.addEventListener('click', function () {
-        addToCart(btn.dataset.slug, btn.dataset.title, parseFloat(btn.dataset.preco));
+        addToCart(btn.dataset.slug, btn.dataset.title, parseFloat(btn.dataset.preco), btn.dataset.codigo);
       });
     });
 

@@ -15,7 +15,7 @@
     <h1>{{ .Title }}</h1>
     <p class="bio">{{ .Params.bio }}</p>
 
-    {{ if or .Params.instagram_url .Params.whatsapp_url }}
+    {{ if or .Params.instagram_url .Params.whatsapp_url .Params.google_avaliacao_url }}
     <div class="social-icons">
       {{ with .Params.instagram_url }}
       <a href="{{ . }}" target="_blank" rel="noopener" aria-label="Instagram">
@@ -25,6 +25,11 @@
       {{ with .Params.whatsapp_url }}
       <a href="{{ . }}" target="_blank" rel="noopener" aria-label="WhatsApp">
         <i class="fa-brands fa-whatsapp"></i>
+      </a>
+      {{ end }}
+      {{ with .Params.google_avaliacao_url }}
+      <a href="{{ . }}" target="_blank" rel="noopener" aria-label="Avaliar no Google">
+        <i class="fa-brands fa-google"></i>
       </a>
       {{ end }}
     </div>
@@ -48,6 +53,41 @@
         {{ end }}
       {{ end }}
     </div>
+
+    {{ $ytUrl := .Params.video_youtube_url }}
+    {{ $ytId := "" }}
+    {{ if $ytUrl }}
+      {{ $found := findRE `(?:youtu\.be/|v=)[\w-]{11}` $ytUrl 1 }}
+      {{ if $found }}
+        {{ $ytId = replaceRE `.*(?:youtu\.be/|v=)` "" (index $found 0) }}
+      {{ end }}
+    {{ end }}
+    {{ if $ytId }}
+    <section class="video-section">
+      <h2>Vídeo</h2>
+      <div class="video-embed">
+        <iframe src="https://www.youtube.com/embed/{{ $ytId }}" title="Vídeo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy"></iframe>
+      </div>
+    </section>
+    {{ end }}
+
+    {{ $galeriaSection := .Site.GetPage "galeria" }}
+    {{ if and $galeriaSection $galeriaSection.Pages }}
+    <section class="galeria-section">
+      <h2>Conheça nossa padaria</h2>
+      <div class="galeria-grid">
+        {{ range sort $galeriaSection.Pages "Params.peso" }}
+        {{ $foto := . }}
+        {{ with $foto.Params.foto }}
+        <figure class="galeria-item">
+          <img src="{{ . | relURL }}" alt="{{ $foto.Params.legenda | default "Foto da padaria" }}" loading="lazy">
+          {{ with $foto.Params.legenda }}<figcaption>{{ . }}</figcaption>{{ end }}
+        </figure>
+        {{ end }}
+        {{ end }}
+      </div>
+    </section>
+    {{ end }}
   </main>
 
   <footer>

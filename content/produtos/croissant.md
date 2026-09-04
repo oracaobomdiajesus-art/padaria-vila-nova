@@ -2,6 +2,9 @@
 slug: "croissant"
 title: "Croissant"
 preco: 8.50
+codigo: "002"
+em_promocao: true
+preco_promocional: 6.90
 foto: /img/foto-padaria.jpg
 descricao: "Croissant amanteigado, folhado na hora."
 cores: ""

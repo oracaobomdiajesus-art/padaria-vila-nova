@@ -2,6 +2,8 @@
 slug: "brigadeiro"
 title: "Brigadeiro Gourmet"
 preco: 3.50
+codigo: "004"
+em_promocao: false
 foto: /img/foto-padaria.jpg
 descricao: "Brigadeiro artesanal feito com chocolate belga."
 cores: "Granulado, Confeitos coloridos"

@@ -28,6 +28,12 @@ content:
       - name: "chave_pix"
         label: "Chave Pix (ou Pix copia e cola)"
         type: "string"
+      - name: "video_youtube_url"
+        label: "Link do vídeo no YouTube (opcional)"
+        type: "string"
+      - name: "google_avaliacao_url"
+        label: "Link para avaliar no Google (opcional)"
+        type: "string"
       - name: "tema_cor"
         label: "Tema de cor do site"
         type: "select"
@@ -134,6 +140,16 @@ content:
         label: "Preço (em reais, ex: 12.50)"
         type: "number"
         required: true
+      - name: "codigo"
+        label: "Código do produto (ex: 001, 002 — você escolhe)"
+        type: "string"
+      - name: "em_promocao"
+        label: "Produto em promoção?"
+        type: "boolean"
+        default: false
+      - name: "preco_promocional"
+        label: "Preço promocional (em reais, ex: 9.90 — só vale se 'Produto em promoção' estiver ligado)"
+        type: "number"
       - name: "foto"
         label: "Foto do produto"
         type: "image"
@@ -157,6 +173,46 @@ content:
         label: "Produto ativo (aparece no catálogo)"
         type: "boolean"
         default: true
+      - name: "peso"
+        label: "Ordem de exibição"
+        type: "number"
+      - name: "_build"
+        label: false
+        hidden: true
+        type: "object"
+        default:
+          render: "never"
+          list: "local"
+        fields:
+          - name: "render"
+            label: false
+            type: "string"
+            default: "never"
+            hidden: true
+          - name: "list"
+            label: false
+            type: "string"
+            default: "local"
+            hidden: true
+
+  - name: "galeria"
+    label: "Galeria de Fotos"
+    type: "collection"
+    path: "content/galeria"
+    format: "yaml-frontmatter"
+    view:
+      primary: "legenda"
+      default:
+        sort: "peso"
+        order: "asc"
+    fields:
+      - name: "foto"
+        label: "Foto"
+        type: "image"
+        required: true
+      - name: "legenda"
+        label: "Legenda (opcional)"
+        type: "text"
       - name: "peso"
         label: "Ordem de exibição"
         type: "number"
