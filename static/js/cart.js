@@ -213,6 +213,48 @@
 
     if (totalEl) totalEl.textContent = formatPrice(cartTotal(cart));
     updateCheckoutLinks();
+    syncCatalogControls(cart);
+    syncStickyBar(cart, count);
+  }
+
+  function syncCatalogControls(cart) {
+    var qtyBySlug = {};
+    cart.forEach(function (item) {
+      qtyBySlug[item.slug] = item.qty;
+    });
+
+    var controls = document.querySelectorAll('.cart-control');
+    controls.forEach(function (control) {
+      var slug = control.dataset.slug;
+      var qty = qtyBySlug[slug] || 0;
+      var addBtn = control.querySelector('.btn-add-cart');
+      var stepper = control.querySelector('.qty-stepper');
+      var qtyValue = control.querySelector('.qty-value');
+
+      if (qty > 0) {
+        if (addBtn) addBtn.hidden = true;
+        if (stepper) stepper.hidden = false;
+        if (qtyValue) qtyValue.textContent = qty;
+      } else {
+        if (addBtn) addBtn.hidden = false;
+        if (stepper) stepper.hidden = true;
+      }
+    });
+  }
+
+  function syncStickyBar(cart, count) {
+    var bar = document.getElementById('cart-sticky-bar');
+    var fab = document.getElementById('cart-toggle');
+    var countEl = document.getElementById('sticky-count');
+    var totalEl = document.getElementById('sticky-total');
+    if (!bar) return;
+
+    var hasItems = count > 0;
+    bar.hidden = !hasItems;
+    if (fab) fab.hidden = hasItems;
+
+    if (countEl) countEl.textContent = count + (count === 1 ? ' item' : ' itens');
+    if (totalEl) totalEl.textContent = formatPrice(cartTotal(cart));
   }
 
   function setupPixCopy() {
@@ -249,8 +291,27 @@
       });
     });
 
+    var incButtons = document.querySelectorAll('.cart-control .qty-inc');
+    incButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var control = btn.closest('.cart-control');
+        if (control) changeQty(control.dataset.slug, 1);
+      });
+    });
+
+    var decButtons = document.querySelectorAll('.cart-control .qty-dec');
+    decButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var control = btn.closest('.cart-control');
+        if (control) changeQty(control.dataset.slug, -1);
+      });
+    });
+
     var cartToggle = document.getElementById('cart-toggle');
     if (cartToggle) cartToggle.addEventListener('click', openCart);
+
+    var stickyCartBtn = document.getElementById('sticky-cart-btn');
+    if (stickyCartBtn) stickyCartBtn.addEventListener('click', openCart);
 
     var cartClose = document.getElementById('cart-close');
     if (cartClose) cartClose.addEventListener('click', closeCart);

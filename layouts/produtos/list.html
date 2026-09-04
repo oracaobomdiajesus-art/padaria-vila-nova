@@ -37,9 +37,16 @@
               {{ with .Params.cores }}<p class="product-meta"><strong>Cores:</strong> {{ . }}</p>{{ end }}
               {{ with .Params.tamanho }}<p class="product-meta"><strong>Tamanho:</strong> {{ . }}</p>{{ end }}
               <p class="product-price">{{ printf "R$ %.2f" .Params.preco | replaceRE "\\." "," }}</p>
-              <button type="button" class="btn-add-cart" data-slug="{{ .Params.slug }}" data-title="{{ .Title }}" data-preco="{{ .Params.preco }}">
-                <i class="fa-solid fa-cart-plus"></i> Adicionar ao carrinho
-              </button>
+              <div class="cart-control" data-slug="{{ .Params.slug }}">
+                <button type="button" class="btn-add-cart" data-slug="{{ .Params.slug }}" data-title="{{ .Title }}" data-preco="{{ .Params.preco }}">
+                  <i class="fa-solid fa-cart-plus"></i> Adicionar ao carrinho
+                </button>
+                <div class="qty-stepper" hidden>
+                  <button type="button" class="qty-btn qty-dec" aria-label="Diminuir quantidade">&minus;</button>
+                  <span class="qty-value">0</span>
+                  <button type="button" class="qty-btn qty-inc" aria-label="Aumentar quantidade">+</button>
+                </div>
+              </div>
             </div>
           </div>
           {{ end }}
@@ -61,6 +68,16 @@
       <i class="fa-solid fa-cart-shopping"></i>
       <span id="cart-badge" class="cart-badge" hidden>0</span>
     </button>
+
+    <div id="cart-sticky-bar" class="cart-sticky-bar" hidden>
+      <div class="cart-sticky-info">
+        <span id="sticky-count" class="cart-sticky-count">0 itens</span>
+        <strong id="sticky-total" class="cart-sticky-total">R$ 0,00</strong>
+      </div>
+      <button type="button" id="sticky-cart-btn" class="btn-sticky-cart">
+        <i class="fa-solid fa-cart-shopping"></i> Ver carrinho
+      </button>
+    </div>
 
     <div id="cart-overlay" class="cart-overlay" hidden></div>
 
