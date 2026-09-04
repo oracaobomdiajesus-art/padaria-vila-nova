@@ -1,7 +1,6 @@
 ---
 id: "c1levyo21"
 type: "profile"
-title: "Draft Profile Entry"
 title: "Padaria Vila Nova"
 bio: "Pães e doces artesanais feitos com carinho todos os dias 🍞💛"
 foto_perfil: "/img/foto-padaria.jpg"

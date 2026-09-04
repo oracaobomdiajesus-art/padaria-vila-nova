@@ -1,0 +1,75 @@
+media:
+  input: "static/img"
+  output: "/img"
+
+content:
+  - name: "profile"
+    label: "Perfil"
+    type: "file"
+    path: "content/_index.md"
+    format: "yaml-frontmatter"
+    fields:
+      - name: "title"
+        label: "Nome do negócio"
+        type: "string"
+        required: true
+      - name: "bio"
+        label: "Biografia / descrição curta"
+        type: "text"
+      - name: "foto_perfil"
+        label: "Foto de perfil"
+        type: "image"
+      - name: "instagram_url"
+        label: "URL do Instagram"
+        type: "string"
+      - name: "whatsapp_url"
+        label: "URL do WhatsApp"
+        type: "string"
+
+  - name: "links"
+    label: "Links"
+    type: "collection"
+    path: "content/links"
+    format: "yaml-frontmatter"
+    view:
+      primary: "title"
+      default:
+        sort: "peso"
+        order: "asc"
+    fields:
+      - name: "slug"
+        label: "Identificador (slug)"
+        type: "string"
+        required: true
+      - name: "title"
+        label: "Título do link"
+        type: "string"
+        required: true
+      - name: "link_url"
+        label: "URL de destino"
+        type: "string"
+        required: true
+      - name: "icone"
+        label: "Ícone (classe Font Awesome, opcional)"
+        type: "string"
+      - name: "peso"
+        label: "Ordem de exibição"
+        type: "number"
+      - name: "_build"
+        label: false
+        hidden: true
+        type: "object"
+        default:
+          render: "never"
+          list: "local"
+        fields:
+          - name: "render"
+            label: false
+            type: "string"
+            default: "never"
+            hidden: true
+          - name: "list"
+            label: false
+            type: "string"
+            default: "local"
+            hidden: true
