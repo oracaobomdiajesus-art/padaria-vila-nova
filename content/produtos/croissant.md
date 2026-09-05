@@ -11,7 +11,7 @@ descricao: "Croissant amanteigado, folhado na hora."
 cores: ""
 tamanho: "Unidade"
 categoria: "Pães"
-estoque: 30
+estoque: 1
 ativo: true
 peso: 2
 _build:
