@@ -6,6 +6,7 @@ instagram_url: https://www.instagram.com/alanamoraisctba?igsi=a2hxbXlhZGY3dmd5
 whatsapp_url: https://wa.me/5541996497311
 chave_pix: "41996497311"
 video_youtube_url: ""
+video_titulo: ""
 google_avaliacao_url: ""
 tema_cor: rosa
 ---
