@@ -119,7 +119,7 @@
     padding: 7px 0 7px 24px;
     font-size: 0.92rem;
   }
-  .produto-real-details + .produto-row { border-top: 1px solid #f2ede2; }
+  .produto-row + .produto-row { border-top: 1px solid #f2ede2; }
   .produto-linha1 {
     display: flex;
     align-items: center;
@@ -146,12 +146,12 @@
     gap: 4px;
     background: #F3EDE1;
     border-radius: 999px;
-    padding: 3px 10px 3px 8px;
+    padding: 3px 10px;
     font-size: 0.78rem;
     cursor: default;
   }
   .promo-pill { cursor: pointer; }
-  .promo-pill input[type="checkbox"] { margin: 0; }
+  .promo-pill input[type="checkbox"] { margin: 0 2px 0 0; }
   .estoque-site-input, .preco-promo-input {
     width: 46px;
     padding: 2px 4px;
@@ -162,11 +162,13 @@
   }
   .preco-promo-input { width: 54px; }
   .produto-real-details {
-    margin: -2px 0 2px 24px;
     font-size: 0.76rem;
     opacity: 0.7;
+    align-self: center;
+    margin-left: auto;
   }
-  .produto-real-details summary { cursor: pointer; }
+  .produto-real-details summary { cursor: pointer; list-style: none; }
+  .produto-real-details summary::-webkit-details-marker { display: none; }
   .produto-real-info { display: block; margin-top: 2px; }
   #resultados { margin-top: 16px; }
   .resultado-item {
@@ -450,7 +452,7 @@
         var vitrinePill = document.createElement('span');
         vitrinePill.className = 'vitrine-pill';
         var vitrineTexto = document.createElement('span');
-        vitrineTexto.textContent = 'Vitrine';
+        vitrineTexto.textContent = 'Disp.';
         var estoqueSiteInput = document.createElement('input');
         estoqueSiteInput.type = 'number';
         estoqueSiteInput.min = '0';
@@ -461,16 +463,10 @@
         vitrinePill.appendChild(vitrineTexto);
         vitrinePill.appendChild(estoqueSiteInput);
 
-        linha2.appendChild(promoPill);
-        linha2.appendChild(vitrinePill);
-
-        row.appendChild(linha1);
-        row.appendChild(linha2);
-        block.appendChild(row);
-
         // Preço cheio e estoque real são só consulta aqui — quem edita eles
         // é o Pages CMS ou a planilha. Fica escondido por padrão pra não
-        // poluir a tela, mas expande com um clique.
+        // poluir a tela, mas expande com um clique. Fica na mesma linha dos
+        // outros dois chips, no final à direita.
         var realDetails = document.createElement('details');
         realDetails.className = 'produto-real-details';
         var realSummary = document.createElement('summary');
@@ -486,7 +482,14 @@
         realInfo.textContent = precoRealTexto + '  ·  Est. ' + estoqueRealTexto;
         realDetails.appendChild(realSummary);
         realDetails.appendChild(realInfo);
-        block.appendChild(realDetails);
+
+        linha2.appendChild(promoPill);
+        linha2.appendChild(vitrinePill);
+        linha2.appendChild(realDetails);
+
+        row.appendChild(linha1);
+        row.appendChild(linha2);
+        block.appendChild(row);
       });
 
       listaEl.appendChild(block);
