@@ -233,13 +233,12 @@ const COLUNA_EM_PROMOCAO = 6;
 const COLUNA_ATIVO = 9;
 const COLUNA_EXPOSICAO = 10;
 
-// Base pra montar o link de cada foto na coluna "Imagem" da planilha
-// (função =IMAGE do próprio Google Sheets, sem precisar de nenhum script).
-// Usa o GitHub em vez do domínio pages.dev: o robô que o Google usa pra
-// buscar a imagem por trás do =IMAGE() não consegue passar por alguma
-// proteção contra automação que o pages.dev aplica (o link abre normal num
-// navegador comum, só o robô do Google é bloqueado) — raw.githubusercontent.com
-// é a fonte padrão recomendada justamente por não ter esse problema.
+// Base pra montar o link de cada foto na coluna "Imagem" da planilha. Fica
+// como texto simples (não como fórmula =IMAGE()) — a função nativa do
+// Sheets depende de um robô do Google buscar a imagem nos bastidores, e
+// isso falhou tanto com o domínio do site quanto com este; o visualizador
+// de fotos de verdade é o Apps Script (ImageViewerProdutos), que abre a
+// foto no navegador da própria pessoa, contornando esse bloqueio.
 const IMAGEM_BASE_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/static`;
 
 // A lista de categorias existentes mora numa aba separada (não misturada
@@ -280,17 +279,18 @@ export function montarLinhasPlanilha(produtos, categorias) {
 
   const produtosOrdenados = produtos.slice().sort((a, b) => a.title.localeCompare(b.title));
   produtosOrdenados.forEach((p) => {
-    // =IMAGE já é nativo do Google Sheets — não precisa de nenhum script.
-    // Se a pessoa não quiser ver as fotos, ela mesma pode ocultar a coluna
-    // "Imagem" direto na planilha (botão direito → Ocultar coluna); como a
-    // sincronização só reescreve valores de célula, a coluna continua
-    // oculta nas próximas vezes.
-    const imagemFormula = p.foto ? `=IMAGE("${IMAGEM_BASE_URL}${p.foto}", 4, 50, 50)` : "";
+    // Link de texto simples (não =IMAGE()): o =IMAGE() depende do robô do
+    // Google conseguir buscar a imagem nos bastidores, e isso falhou tanto
+    // com o link do site quanto com o do GitHub — sinal de que o problema é
+    // do lado do robô, não do link em si. O visualizador de fotos de verdade
+    // é o Apps Script (ver ImageViewerProdutos), que abre a foto no
+    // navegador da própria pessoa, contornando esse bloqueio.
+    const imagemUrl = p.foto ? `${IMAGEM_BASE_URL}${p.foto}` : "";
     linhas.push([
       p.path,
       p.categoria || "",
       p.title,
-      imagemFormula,
+      imagemUrl,
       p.codigo || "",
       p.preco || "",
       p.em_promocao ? "Sim" : "Nao",
@@ -481,9 +481,9 @@ export async function exportarCatalogoParaSheet(env) {
     return { ok: false, error: `Não foi possível limpar a planilha (status ${clearRes.status})` };
   }
 
-  // USER_ENTERED (em vez de RAW) faz a célula "=IMAGE(...)" da coluna
-  // Imagem virar uma fórmula de verdade, do mesmo jeito que aconteceria se
-  // alguém digitasse na planilha — com RAW ficaria como texto puro.
+  // USER_ENTERED (em vez de RAW) faz números como preço e estoque virarem
+  // números de verdade na planilha, do mesmo jeito que aconteceria se
+  // alguém digitasse — com RAW ficariam como texto puro.
   const updateRes = await fetch(`${sheetsUrl}/A1?valueInputOption=USER_ENTERED`, {
     method: "PUT",
     headers: {
