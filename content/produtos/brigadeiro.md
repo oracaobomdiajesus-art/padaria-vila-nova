@@ -9,7 +9,7 @@ descricao: "Brigadeiro artesanal feito com chocolate belga."
 cores: "Granulado, Confeitos coloridos"
 tamanho: "Unidade"
 categoria: "Doces e Bolos"
-estoque: 5
+estoque: 1
 ativo: false
 peso: 2
 _build:
