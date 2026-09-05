@@ -134,10 +134,38 @@
   #msg.erro { color: var(--err); }
   #msg.ok { color: var(--ok); }
   .hint { font-size: 0.78rem; opacity: 0.75; margin-top: 8px; }
+  .cms-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .cms-link:hover { text-decoration: underline; }
+  .btn-secondary {
+    background: #eee;
+    color: var(--text);
+  }
+  .csv-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+  }
+  .csv-actions .hint { margin: 6px 0 0; width: 100%; }
+  input[type="file"] { display: none; }
 </style>
 </head>
 <body>
 <main>
+  <a class="cms-link" href="https://app.pagescms.org/" target="_blank" rel="noopener">
+    ← Voltar para o Pages CMS (editar produtos, fotos, etc.)
+  </a>
   <h1>Painel Admin</h1>
   <p class="subtitle">Padaria Vila Nova — ativar/desativar categorias e produtos em lote</p>
 
@@ -260,6 +288,7 @@
         estoqueInput.min = '0';
         estoqueInput.step = '1';
         estoqueInput.className = 'estoque-input';
+        estoqueInput.dataset.path = prod.path;
         estoqueInput.value = prod.estoque || '';
         estoqueWrap.appendChild(estoqueLabel);
         estoqueWrap.appendChild(estoqueInput);
