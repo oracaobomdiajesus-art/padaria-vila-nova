@@ -11,20 +11,24 @@ import {
 
 const MAX_ITEMS = 100;
 
-function parseEstoque(path, estoqueRaw) {
-  if (!path.startsWith("content/produtos/")) return { estoque: null };
-  if (estoqueRaw === undefined || estoqueRaw === null || estoqueRaw === "") return { estoque: null };
-  const n = Number(String(estoqueRaw).trim().replace(",", "."));
-  if (!Number.isInteger(n) || n < 0) return { error: "Valor de 'estoque' inválido" };
-  return { estoque: n };
+// O painel admin só mexe no estoque "de vitrine" (o número mostrado no
+// site, usado pra estratégia de escassez) e no preço promocional — nunca no
+// estoque real nem no preço cheio, que ficam só para consulta no painel e
+// são editados pelo Pages CMS ou pela planilha.
+function parseEstoqueSite(path, valorRaw) {
+  if (!path.startsWith("content/produtos/")) return { estoqueSite: null };
+  if (valorRaw === undefined || valorRaw === null || valorRaw === "") return { estoqueSite: null };
+  const n = Number(String(valorRaw).trim().replace(",", "."));
+  if (!Number.isInteger(n) || n < 0) return { error: "Valor de 'estoque_site' inválido" };
+  return { estoqueSite: n };
 }
 
-function parsePreco(path, precoRaw) {
-  if (!path.startsWith("content/produtos/")) return { preco: null };
-  if (precoRaw === undefined || precoRaw === null || precoRaw === "") return { preco: null };
-  const n = Number(String(precoRaw).trim().replace(",", "."));
-  if (!isFinite(n) || n < 0) return { error: "Valor de 'preco' inválido" };
-  return { preco: n };
+function parsePrecoPromocional(path, valorRaw) {
+  if (!path.startsWith("content/produtos/")) return { precoPromocional: null };
+  if (valorRaw === undefined || valorRaw === null || valorRaw === "") return { precoPromocional: null };
+  const n = Number(String(valorRaw).trim().replace(",", "."));
+  if (!isFinite(n) || n < 0) return { error: "Valor de 'preco_promocional' inválido" };
+  return { precoPromocional: n };
 }
 
 async function toggleOne(env, item) {
@@ -38,14 +42,14 @@ async function toggleOne(env, item) {
     return { path, ok: false, error: "Valor de 'ativo' inválido" };
   }
 
-  const { estoque, error: estoqueError } = parseEstoque(path, item && item.estoque);
-  if (estoqueError) {
-    return { path, ok: false, error: estoqueError };
+  const { estoqueSite, error: estoqueSiteError } = parseEstoqueSite(path, item && item.estoque_site);
+  if (estoqueSiteError) {
+    return { path, ok: false, error: estoqueSiteError };
   }
 
-  const { preco, error: precoError } = parsePreco(path, item && item.preco);
-  if (precoError) {
-    return { path, ok: false, error: precoError };
+  const { precoPromocional, error: precoPromocionalError } = parsePrecoPromocional(path, item && item.preco_promocional);
+  if (precoPromocionalError) {
+    return { path, ok: false, error: precoPromocionalError };
   }
 
   const emPromocao =
@@ -62,11 +66,11 @@ async function toggleOne(env, item) {
     const currentContent = base64ToUtf8(fileData.content);
 
     let newContent = setFrontMatterField(currentContent, "ativo", ativo ? "true" : "false");
-    if (estoque !== null) {
-      newContent = setFrontMatterField(newContent, "estoque", String(estoque));
+    if (estoqueSite !== null) {
+      newContent = setFrontMatterField(newContent, "estoque_site", String(estoqueSite));
     }
-    if (preco !== null) {
-      newContent = setFrontMatterField(newContent, "preco", String(preco));
+    if (precoPromocional !== null) {
+      newContent = setFrontMatterField(newContent, "preco_promocional", String(precoPromocional));
     }
     if (emPromocao !== null) {
       newContent = setFrontMatterField(newContent, "em_promocao", emPromocao ? "true" : "false");

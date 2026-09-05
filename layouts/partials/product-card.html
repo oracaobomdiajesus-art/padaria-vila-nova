@@ -22,6 +22,14 @@
     {{ else }}
     <p class="product-price">{{ printf "R$ %.2f" (mul .Params.preco 1.0) | replaceRE "\\." "," }}</p>
     {{ end }}
+    {{ if isset .Params "estoque_site" }}
+      {{ $estoqueSite := .Params.estoque_site }}
+      {{ if eq $estoqueSite 0 }}
+      <p class="product-stock esgotado">Esgotado</p>
+      {{ else if gt $estoqueSite 0 }}
+      <p class="product-stock baixo">Restam {{ $estoqueSite }} unidade{{ if gt $estoqueSite 1 }}s{{ end }}!</p>
+      {{ end }}
+    {{ end }}
     <div class="cart-control" data-slug="{{ .Params.slug }}">
       <button type="button" class="btn-add-cart" data-slug="{{ .Params.slug }}" data-title="{{ .Title }}" data-preco="{{ $precoEfetivo }}" data-codigo="{{ .Params.codigo }}">
         <i class="fa-solid fa-cart-plus"></i> Adicionar ao carrinho

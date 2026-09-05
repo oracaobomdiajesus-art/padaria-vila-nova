@@ -204,6 +204,7 @@ async function listDir(env, dir) {
       categoria: extractField(fm, "categoria"),
       codigo: extractField(fm, "codigo"),
       estoque: extractField(fm, "estoque"),
+      estoque_site: extractField(fm, "estoque_site"),
       preco: extractField(fm, "preco"),
       em_promocao: extractField(fm, "em_promocao") === "true",
       preco_promocional: extractField(fm, "preco_promocional"),

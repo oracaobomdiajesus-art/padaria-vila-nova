@@ -197,7 +197,7 @@ content:
         type: "string"
         required: true
       - name: "preco"
-        label: "Preço (em reais, ex: 12.50)"
+        label: "Preço cheio (em reais, ex: 12.50)"
         type: "number"
         required: true
       - name: "codigo"
@@ -235,7 +235,10 @@ content:
           value: "{fields.title}"
           label: "{fields.title}"
       - name: "estoque"
-        label: "Estoque (apenas informativo)"
+        label: "Estoque real (apenas informativo)"
+        type: "number"
+      - name: "estoque_site"
+        label: "Estoque exibido no site (opcional — pode ser diferente do real, usado como estratégia de escassez)"
         type: "number"
       - name: "ativo"
         label: "Produto ativo (aparece no catálogo)"

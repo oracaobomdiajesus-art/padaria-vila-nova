@@ -115,7 +115,7 @@
     font-size: 0.78rem;
     opacity: 0.85;
   }
-  .estoque-input {
+  .estoque-site-input {
     width: 52px;
     padding: 3px 6px;
     border: 1px solid #ddd;
@@ -129,7 +129,7 @@
     font-size: 0.78rem;
     opacity: 0.85;
   }
-  .preco-input {
+  .preco-promo-input {
     width: 64px;
     padding: 3px 6px;
     border: 1px solid #ddd;
@@ -144,6 +144,13 @@
     opacity: 0.85;
     cursor: pointer;
   }
+  .produto-real-details {
+    margin: -4px 0 6px 48px;
+    font-size: 0.76rem;
+    opacity: 0.7;
+  }
+  .produto-real-details summary { cursor: pointer; }
+  .produto-real-info { display: block; margin-top: 2px; }
   #resultados { margin-top: 16px; }
   .resultado-item {
     font-size: 0.85rem;
@@ -337,33 +344,33 @@
         if (prod.codigo) labelText += ' — #' + prod.codigo;
         label.textContent = labelText;
 
-        var estoqueWrap = document.createElement('span');
-        estoqueWrap.className = 'estoque-wrap';
-        var estoqueLabel = document.createElement('span');
-        estoqueLabel.textContent = 'Estoque:';
-        var estoqueInput = document.createElement('input');
-        estoqueInput.type = 'number';
-        estoqueInput.min = '0';
-        estoqueInput.step = '1';
-        estoqueInput.className = 'estoque-input';
-        estoqueInput.dataset.path = prod.path;
-        estoqueInput.value = prod.estoque || '';
-        estoqueWrap.appendChild(estoqueLabel);
-        estoqueWrap.appendChild(estoqueInput);
+        var estoqueSiteWrap = document.createElement('span');
+        estoqueSiteWrap.className = 'estoque-wrap';
+        var estoqueSiteLabel = document.createElement('span');
+        estoqueSiteLabel.textContent = 'Estoque site:';
+        var estoqueSiteInput = document.createElement('input');
+        estoqueSiteInput.type = 'number';
+        estoqueSiteInput.min = '0';
+        estoqueSiteInput.step = '1';
+        estoqueSiteInput.className = 'estoque-site-input';
+        estoqueSiteInput.dataset.path = prod.path;
+        estoqueSiteInput.value = prod.estoque_site || '';
+        estoqueSiteWrap.appendChild(estoqueSiteLabel);
+        estoqueSiteWrap.appendChild(estoqueSiteInput);
 
-        var precoWrap = document.createElement('span');
-        precoWrap.className = 'preco-wrap';
-        var precoLabel = document.createElement('span');
-        precoLabel.textContent = 'Preço: R$';
-        var precoInput = document.createElement('input');
-        precoInput.type = 'number';
-        precoInput.min = '0';
-        precoInput.step = '0.01';
-        precoInput.className = 'preco-input';
-        precoInput.dataset.path = prod.path;
-        precoInput.value = prod.preco || '';
-        precoWrap.appendChild(precoLabel);
-        precoWrap.appendChild(precoInput);
+        var precoPromoWrap = document.createElement('span');
+        precoPromoWrap.className = 'preco-wrap';
+        var precoPromoLabel = document.createElement('span');
+        precoPromoLabel.textContent = 'Preço promo: R$';
+        var precoPromoInput = document.createElement('input');
+        precoPromoInput.type = 'number';
+        precoPromoInput.min = '0';
+        precoPromoInput.step = '0.01';
+        precoPromoInput.className = 'preco-promo-input';
+        precoPromoInput.dataset.path = prod.path;
+        precoPromoInput.value = prod.preco_promocional || '';
+        precoPromoWrap.appendChild(precoPromoLabel);
+        precoPromoWrap.appendChild(precoPromoInput);
 
         var promoWrap = document.createElement('label');
         promoWrap.className = 'promo-wrap';
@@ -377,11 +384,31 @@
 
         row.appendChild(checkbox);
         row.appendChild(label);
-        row.appendChild(precoWrap);
-        row.appendChild(estoqueWrap);
+        row.appendChild(precoPromoWrap);
+        row.appendChild(estoqueSiteWrap);
         row.appendChild(promoWrap);
         row.appendChild(status);
         block.appendChild(row);
+
+        // Preço cheio e estoque real são só consulta aqui — quem edita eles
+        // é o Pages CMS ou a planilha. Fica escondido por padrão pra não
+        // poluir a tela, mas expande com um clique.
+        var realDetails = document.createElement('details');
+        realDetails.className = 'produto-real-details';
+        var realSummary = document.createElement('summary');
+        realSummary.textContent = 'Ver dados reais (preço cheio e estoque)';
+        var realInfo = document.createElement('span');
+        realInfo.className = 'produto-real-info';
+        var precoRealTexto = prod.preco !== null && prod.preco !== undefined && prod.preco !== ''
+          ? 'R$ ' + Number(prod.preco).toFixed(2).replace('.', ',')
+          : '—';
+        var estoqueRealTexto = prod.estoque !== null && prod.estoque !== undefined && prod.estoque !== ''
+          ? prod.estoque
+          : '—';
+        realInfo.textContent = 'Preço cheio: ' + precoRealTexto + '  ·  Estoque real: ' + estoqueRealTexto;
+        realDetails.appendChild(realSummary);
+        realDetails.appendChild(realInfo);
+        block.appendChild(realDetails);
       });
 
       listaEl.appendChild(block);
@@ -522,104 +549,12 @@
     var cabecalho = parseCsvLinha(linhas[0], delimitador).map(normalizarTexto);
     var idxCaminho = indiceColuna(cabecalho, ['caminho (nao editar)', 'caminho']);
 
-    if (idxCaminho !== -1) {
-      processarSincronizacaoCompleta(linhas, delimitador, cabecalho, idxCaminho);
+    if (idxCaminho === -1) {
+      setMsg('A planilha precisa ter a coluna "Caminho" (ela é gerada automaticamente pelo sistema — não a apague).', 'erro');
       return;
     }
 
-    var idxCodigo = cabecalho.indexOf('codigo');
-    var idxProduto = cabecalho.indexOf('produto');
-    var idxEstoque = cabecalho.indexOf('estoque');
-
-    if (idxEstoque === -1 || (idxCodigo === -1 && idxProduto === -1)) {
-      setMsg('A planilha precisa ter as colunas "Produto" e/ou "Codigo", além de "Estoque".', 'erro');
-      return;
-    }
-
-    var porCodigo = {};
-    var porNome = {};
-    dados.produtos.forEach(function (p) {
-      if (p.codigo) {
-        var c = normalizarTexto(p.codigo);
-        (porCodigo[c] = porCodigo[c] || []).push(p);
-      }
-      var n = normalizarTexto(p.title);
-      (porNome[n] = porNome[n] || []).push(p);
-    });
-
-    var encontrados = [];
-    var problemas = [];
-
-    for (var i = 1; i < linhas.length; i++) {
-      var cols = parseCsvLinha(linhas[i], delimitador);
-      var nomeOriginal = idxProduto !== -1 ? (cols[idxProduto] || '') : '';
-      var nomeCorrigido = corrigirMojibake(nomeOriginal);
-      var codigo = idxCodigo !== -1 ? normalizarTexto(cols[idxCodigo]) : '';
-      var nome = normalizarTexto(nomeOriginal);
-      var nomeAlt = normalizarTexto(nomeCorrigido);
-      var estoqueTxt = (cols[idxEstoque] || '').trim();
-      var rotulo = nomeCorrigido || (idxCodigo !== -1 && cols[idxCodigo]) || ('linha ' + (i + 1));
-
-      if (estoqueTxt === '') continue;
-
-      var novoEstoque = Number(estoqueTxt.replace(',', '.'));
-      if (!isFinite(novoEstoque) || novoEstoque < 0) {
-        problemas.push(rotulo + ': valor de estoque inválido ("' + estoqueTxt + '")');
-        continue;
-      }
-
-      var candidatos = null;
-      if (codigo && porCodigo[codigo] && porCodigo[codigo].length === 1) {
-        candidatos = porCodigo[codigo];
-      } else if (nome && porNome[nome] && porNome[nome].length === 1) {
-        candidatos = porNome[nome];
-      } else if (nomeAlt && nomeAlt !== nome && porNome[nomeAlt] && porNome[nomeAlt].length === 1) {
-        candidatos = porNome[nomeAlt];
-      }
-
-      if (!candidatos) {
-        var motivo;
-        if (codigo && porCodigo[codigo] && porCodigo[codigo].length > 1) motivo = 'código duplicado no catálogo, corrija manualmente';
-        else if (nome && porNome[nome] && porNome[nome].length > 1) motivo = 'nome duplicado no catálogo, corrija manualmente';
-        else motivo = 'produto não encontrado no catálogo';
-        problemas.push(rotulo + ': ' + motivo);
-        continue;
-      }
-
-      encontrados.push({ produto: candidatos[0], novoEstoque: novoEstoque });
-    }
-
-    if (encontrados.length === 0) {
-      setMsg('Nenhuma linha da planilha pôde ser identificada. Nada foi alterado.', 'erro');
-      resultadosEl.innerHTML = '';
-      mostrarProblemasImportacao(problemas);
-      return;
-    }
-
-    var resumo = 'Foram encontrados ' + encontrados.length + ' produto(s) para atualizar o estoque:\n\n' +
-      encontrados.map(function (e) {
-        return '- ' + e.produto.title + ': ' + (e.produto.estoque || 0) + ' → ' + e.novoEstoque;
-      }).join('\n');
-
-    if (problemas.length) {
-      resumo += '\n\n' + problemas.length + ' linha(s) não identificadas serão ignoradas (detalhes aparecem na tela depois).';
-    }
-
-    resumo += '\n\nIsso só preenche os campos na tela — nada é salvo ainda. Deseja aplicar?';
-
-    if (!window.confirm(resumo)) {
-      setMsg('Importação cancelada.', '');
-      return;
-    }
-
-    encontrados.forEach(function (e) {
-      var input = listaEl.querySelector('.estoque-input[data-path="' + e.produto.path + '"]');
-      if (input) input.value = e.novoEstoque;
-    });
-
-    setMsg(encontrados.length + ' produto(s) atualizados na tela a partir da planilha. Revise e clique em "Salvar alterações".', 'ok');
-    resultadosEl.innerHTML = '';
-    mostrarProblemasImportacao(problemas);
+    processarSincronizacaoCompleta(linhas, delimitador, cabecalho, idxCaminho);
   }
 
   // Modo completo: a planilha tem a coluna "Caminho", então ela é tratada
@@ -886,13 +821,13 @@
       var item = { path: cb.dataset.path, ativo: cb.checked };
       if (cb.dataset.kind === 'produto') {
         var row = cb.closest('.produto-row');
-        var estoqueInput = row ? row.querySelector('.estoque-input') : null;
-        if (estoqueInput && estoqueInput.value !== '') {
-          item.estoque = Number(estoqueInput.value);
+        var estoqueSiteInput = row ? row.querySelector('.estoque-site-input') : null;
+        if (estoqueSiteInput && estoqueSiteInput.value !== '') {
+          item.estoque_site = Number(estoqueSiteInput.value);
         }
-        var precoInput = row ? row.querySelector('.preco-input') : null;
-        if (precoInput && precoInput.value !== '') {
-          item.preco = precoInput.value;
+        var precoPromoInput = row ? row.querySelector('.preco-promo-input') : null;
+        if (precoPromoInput && precoPromoInput.value !== '') {
+          item.preco_promocional = precoPromoInput.value;
         }
         var promoCheckbox = row ? row.querySelector('.promo-checkbox') : null;
         if (promoCheckbox) {

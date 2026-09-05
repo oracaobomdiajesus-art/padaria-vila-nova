@@ -435,6 +435,15 @@ footer {
   font-size: 1.05rem;
 }
 
+.product-stock {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.product-stock.baixo { color: #d32f2f; }
+.product-stock.esgotado { color: #888; }
+
 .btn-add-cart {
   margin-top: 8px;
   border: none;
