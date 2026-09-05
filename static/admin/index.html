@@ -188,8 +188,9 @@
       <button type="button" class="btn-secondary" id="btn-exportar-csv">Exportar planilha (CSV)</button>
       <label class="btn-secondary" for="input-importar-csv">Importar arquivo (CSV)</label>
       <input type="file" id="input-importar-csv" accept=".csv,text/csv">
+      <button type="button" class="btn-secondary" id="btn-exportar-sheets">Exportar para o Google Sheets</button>
       <button type="button" class="btn-secondary" id="btn-importar-sheets">Importar do Google Sheets</button>
-      <p class="hint">A planilha exportada abre no Google Sheets ou Excel. Edite só a coluna "Estoque". Se a planilha estiver publicada no Google Sheets, use "Importar do Google Sheets" pra buscar direto, sem precisar baixar/subir arquivo. As outras colunas são só referência e não são alteradas.</p>
+      <p class="hint">"Exportar para o Google Sheets" grava a lista atual de produtos direto na sua planilha (sem baixar arquivo). Edite a coluna "Estoque" nela e depois toque em "Importar do Google Sheets" pra trazer de volta. "Exportar/Importar planilha (CSV)" é o método por arquivo, útil como alternativa.</p>
     </div>
     <div id="resultados"></div>
   </div>
@@ -205,6 +206,7 @@
   var btnExportarCsv = document.getElementById('btn-exportar-csv');
   var inputImportarCsv = document.getElementById('input-importar-csv');
   var btnImportarSheets = document.getElementById('btn-importar-sheets');
+  var btnExportarSheets = document.getElementById('btn-exportar-sheets');
   var msgEl = document.getElementById('msg');
   var conteudoEl = document.getElementById('conteudo');
   var listaEl = document.getElementById('lista');
@@ -388,19 +390,26 @@
     return resultado;
   }
 
-  function exportarCsv() {
-    var linhas = [['Categoria', 'Produto', 'Codigo', 'Estoque', 'Ativo'].join(';')];
+  function montarLinhasProdutos() {
+    var linhas = [['Categoria', 'Produto', 'Codigo', 'Estoque', 'Ativo']];
     dados.produtos.slice()
       .sort(function (a, b) { return a.title.localeCompare(b.title); })
       .forEach(function (p) {
         linhas.push([
-          csvCampo(p.categoria || ''),
-          csvCampo(p.title),
-          csvCampo(p.codigo || ''),
-          csvCampo(p.estoque || ''),
+          p.categoria || '',
+          p.title,
+          p.codigo || '',
+          p.estoque || '',
           p.ativo ? 'Sim' : 'Nao'
-        ].join(';'));
+        ]);
       });
+    return linhas;
+  }
+
+  function exportarCsv() {
+    var linhas = montarLinhasProdutos().map(function (linha) {
+      return linha.map(csvCampo).join(';');
+    });
 
     var conteudo = '﻿' + linhas.join('\r\n');
     var blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' });
@@ -555,6 +564,19 @@
   });
 
   btnExportarCsv.addEventListener('click', exportarCsv);
+
+  btnExportarSheets.addEventListener('click', function () {
+    btnExportarSheets.disabled = true;
+    setMsg('Gravando na planilha do Google Sheets...', '');
+    api('/api/planilha', { method: 'POST', body: JSON.stringify({ linhas: montarLinhasProdutos() }) })
+      .then(function () {
+        setMsg('Planilha do Google Sheets atualizada com sucesso.', 'ok');
+      })
+      .catch(function (err) {
+        setMsg(err.message, 'erro');
+      })
+      .finally(function () { btnExportarSheets.disabled = false; });
+  });
 
   btnImportarSheets.addEventListener('click', function () {
     btnImportarSheets.disabled = true;

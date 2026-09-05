@@ -94,3 +94,76 @@ export function setFrontMatterField(content, field, value) {
   const newBlock = `---\n${newFrontMatter}\n---`;
   return content.slice(0, match.index) + newBlock + content.slice(match.index + match[0].length);
 }
+
+function base64UrlFromBytes(bytes) {
+  let binary = "";
+  bytes.forEach((b) => {
+    binary += String.fromCharCode(b);
+  });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlFromString(str) {
+  return base64UrlFromBytes(new TextEncoder().encode(str));
+}
+
+// Service account keys are usually pasted either with real newlines or with
+// literal "\n" escape sequences (depending on how the value was copied from
+// the downloaded JSON), so both forms are normalized before decoding.
+function pemToDerBytes(pem) {
+  const cleaned = pem
+    .replace(/\\n/g, "\n")
+    .replace(/-----BEGIN PRIVATE KEY-----/, "")
+    .replace(/-----END PRIVATE KEY-----/, "")
+    .replace(/\s+/g, "");
+  const binary = atob(cleaned);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+// Exchanges a Google service account key for a short-lived OAuth access
+// token (JWT bearer flow), used to write to the Sheets API on the owner's
+// behalf without ever exposing a long-lived credential to the browser.
+export async function getGoogleAccessToken(env) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "RS256", typ: "JWT" };
+  const claims = {
+    iss: env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+    scope: "https://www.googleapis.com/auth/spreadsheets",
+    aud: "https://oauth2.googleapis.com/token",
+    exp: now + 3600,
+    iat: now,
+  };
+
+  const signingInput = `${base64UrlFromString(JSON.stringify(header))}.${base64UrlFromString(JSON.stringify(claims))}`;
+
+  const cryptoKey = await crypto.subtle.importKey(
+    "pkcs8",
+    pemToDerBytes(env.GOOGLE_SERVICE_ACCOUNT_KEY),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    cryptoKey,
+    new TextEncoder().encode(signingInput)
+  );
+
+  const jwt = `${signingInput}.${base64UrlFromBytes(new Uint8Array(signature))}`;
+
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `grant_type=${encodeURIComponent("urn:ietf:params:oauth:grant-type:jwt-bearer")}&assertion=${jwt}`,
+  });
+
+  if (!res.ok) {
+    throw new Error(`Falha ao autenticar com o Google (status ${res.status})`);
+  }
+
+  const data = await res.json();
+  return data.access_token;
+}
