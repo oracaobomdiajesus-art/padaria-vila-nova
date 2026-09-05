@@ -1,5 +1,5 @@
 # Static Hugo site published via Cloudflare Pages.
-# (redeploy trigger: pick up GOOGLE_SERVICE_ACCOUNT_* / GOOGLE_SHEET_ID)
+# (redeploy trigger: pick up new GOOGLE_SHEET_ID / SHEET_CSV_URL)
 name = "padaria-vila-nova"
 compatibility_date = "2026-09-04"
 pages_build_output_dir = "public"
