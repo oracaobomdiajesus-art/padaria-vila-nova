@@ -1,4 +1,5 @@
 # Static Hugo site published via Cloudflare Pages.
+# (redeploy trigger: pick up newly added env vars)
 name = "padaria-vila-nova"
 compatibility_date = "2026-09-04"
 pages_build_output_dir = "public"
