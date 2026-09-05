@@ -39,6 +39,7 @@ content:
     fields:
       - name: "body"
         label: "Endereço (copie e cole no navegador)"
+        description: "Se pedir login, entre com a conta da Cloudflare de sempre."
         type: "text"
       - name: "_build"
         label: false
