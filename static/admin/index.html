@@ -824,10 +824,26 @@
       .finally(function () { btnExportarSheets.disabled = false; });
   });
 
+  // Antes de comparar a planilha com o catálogo (pra saber o que mudou,
+  // criar ou desativar), busca o catálogo atual de novo: se algo tiver sido
+  // alterado direto pelo Pages CMS desde a última vez que a tela foi
+  // carregada, essa mudança recente precisa entrar na comparação — senão o
+  // painel decidiria com base em dados desatualizados.
+  function atualizarCatalogoAntesDeImportar() {
+    setMsg('Atualizando catálogo...', '');
+    return api('/api/list').then(function (dadosAtuais) {
+      dados = dadosAtuais;
+      render();
+    });
+  }
+
   btnImportarSheets.addEventListener('click', function () {
     btnImportarSheets.disabled = true;
-    setMsg('Buscando planilha...', '');
-    api('/api/planilha')
+    atualizarCatalogoAntesDeImportar()
+      .then(function () {
+        setMsg('Buscando planilha...', '');
+        return api('/api/planilha');
+      })
       .then(function (data) {
         processarCsvImportado(data.csv);
       })
@@ -840,19 +856,26 @@
   inputImportarCsv.addEventListener('change', function () {
     var file = inputImportarCsv.files && inputImportarCsv.files[0];
     if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function (e) {
-      try {
-        processarCsvImportado(e.target.result);
-      } catch (err) {
-        setMsg('Não foi possível ler essa planilha.', 'erro');
-      }
-    };
-    reader.onerror = function () {
-      setMsg('Não foi possível ler o arquivo.', 'erro');
-    };
-    reader.readAsText(file, 'UTF-8');
-    inputImportarCsv.value = '';
+    inputImportarCsv.disabled = true;
+    atualizarCatalogoAntesDeImportar()
+      .then(function () {
+        return new Promise(function (resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function (e) { resolve(e.target.result); };
+          reader.onerror = function () { reject(new Error('Não foi possível ler o arquivo.')); };
+          reader.readAsText(file, 'UTF-8');
+        });
+      })
+      .then(function (texto) {
+        processarCsvImportado(texto);
+      })
+      .catch(function (err) {
+        setMsg(err.message, 'erro');
+      })
+      .finally(function () {
+        inputImportarCsv.disabled = false;
+        inputImportarCsv.value = '';
+      });
   });
 
   btnSalvar.addEventListener('click', function () {
