@@ -30,6 +30,8 @@ async function listDir(env, dir) {
       title: extractField(fm, "title") || file.path,
       ativo: extractField(fm, "ativo") === "true",
       categoria: extractField(fm, "categoria"),
+      codigo: extractField(fm, "codigo"),
+      estoque: extractField(fm, "estoque"),
     });
   }
   return items;

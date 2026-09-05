@@ -70,12 +70,6 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
-  .btn-secondary {
-    background: #eee;
-    color: var(--text);
-    font-size: 0.75rem;
-    padding: 6px 10px;
-  }
   .row-actions {
     display: flex;
     gap: 8px;
@@ -89,9 +83,6 @@
   .categoria-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px;
   }
   .categoria-title {
     display: flex;
@@ -100,10 +91,6 @@
     font-weight: 700;
     color: var(--primary);
   }
-  .categoria-tools {
-    display: flex;
-    gap: 6px;
-  }
   .produto-row {
     display: flex;
     align-items: center;
@@ -111,14 +98,14 @@
     padding: 6px 0 6px 24px;
     font-size: 0.92rem;
   }
-  .produto-row .status {
+  .status {
     font-size: 0.75rem;
     padding: 2px 8px;
     border-radius: 999px;
     background: #eee;
   }
-  .produto-row .status.ativo { background: #DFF5E1; color: var(--ok); }
-  .produto-row .status.inativo { background: #FBE0E0; color: var(--err); }
+  .status.ativo { background: #DFF5E1; color: var(--ok); }
+  .status.inativo { background: #FBE0E0; color: var(--err); }
   #resultados { margin-top: 16px; }
   .resultado-item {
     font-size: 0.85rem;
@@ -210,25 +197,20 @@
       catCheckbox.checked = !!cat.ativo;
       catCheckbox.dataset.path = cat.path;
       catCheckbox.dataset.kind = 'categoria';
-      titleWrap.appendChild(catCheckbox);
-      titleWrap.appendChild(document.createTextNode(' ' + cat.title));
-      header.appendChild(titleWrap);
 
-      var tools = document.createElement('div');
-      tools.className = 'categoria-tools';
-      var btnOn = document.createElement('button');
-      btnOn.className = 'btn-secondary';
-      btnOn.type = 'button';
-      btnOn.textContent = 'Marcar produtos: todos ativos';
-      btnOn.addEventListener('click', function () { setProdutosCategoria(cat.title, true); });
-      var btnOff = document.createElement('button');
-      btnOff.className = 'btn-secondary';
-      btnOff.type = 'button';
-      btnOff.textContent = 'Marcar produtos: todos inativos';
-      btnOff.addEventListener('click', function () { setProdutosCategoria(cat.title, false); });
-      tools.appendChild(btnOn);
-      tools.appendChild(btnOff);
-      header.appendChild(tools);
+      var catStatus = document.createElement('span');
+      catStatus.className = 'status ' + (cat.ativo ? 'ativo' : 'inativo');
+      catStatus.textContent = cat.ativo ? 'ativo' : 'inativo';
+
+      catCheckbox.addEventListener('change', function () {
+        atualizarStatus(catStatus, catCheckbox.checked);
+        setProdutosCategoria(cat.title, catCheckbox.checked);
+      });
+
+      titleWrap.appendChild(catCheckbox);
+      titleWrap.appendChild(document.createTextNode(' ' + cat.title + ' '));
+      titleWrap.appendChild(catStatus);
+      header.appendChild(titleWrap);
 
       block.appendChild(header);
 
@@ -241,14 +223,18 @@
         checkbox.checked = !!prod.ativo;
         checkbox.dataset.path = prod.path;
         checkbox.dataset.kind = 'produto';
-        checkbox.addEventListener('change', function () { atualizarStatus(row, checkbox.checked); });
-
-        var label = document.createElement('span');
-        label.textContent = prod.title;
 
         var status = document.createElement('span');
         status.className = 'status ' + (prod.ativo ? 'ativo' : 'inativo');
         status.textContent = prod.ativo ? 'ativo' : 'inativo';
+
+        checkbox.addEventListener('change', function () { atualizarStatus(status, checkbox.checked); });
+
+        var label = document.createElement('span');
+        var labelText = prod.title;
+        if (prod.codigo) labelText += ' — #' + prod.codigo;
+        if (prod.estoque) labelText += ' — estoque: ' + prod.estoque;
+        label.textContent = labelText;
 
         row.appendChild(checkbox);
         row.appendChild(label);
@@ -260,10 +246,9 @@
     });
   }
 
-  function atualizarStatus(row, ativo) {
-    var status = row.querySelector('.status');
-    status.className = 'status ' + (ativo ? 'ativo' : 'inativo');
-    status.textContent = ativo ? 'ativo' : 'inativo';
+  function atualizarStatus(statusEl, ativo) {
+    statusEl.className = 'status ' + (ativo ? 'ativo' : 'inativo');
+    statusEl.textContent = ativo ? 'ativo' : 'inativo';
   }
 
   function setProdutosCategoria(categoriaTitle, ativo) {
@@ -272,7 +257,8 @@
       var prod = dados.produtos.find(function (p) { return p.path === cb.dataset.path; });
       if (prod && prod.categoria === categoriaTitle) {
         cb.checked = ativo;
-        atualizarStatus(cb.closest('.produto-row'), ativo);
+        var status = cb.closest('.produto-row').querySelector('.status');
+        atualizarStatus(status, ativo);
       }
     });
   }
