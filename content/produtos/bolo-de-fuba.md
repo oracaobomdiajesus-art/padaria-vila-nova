@@ -9,7 +9,7 @@ foto: /img/foto-padaria.jpg
 descricao: Bolo de fubá cremoso, receita da casa.
 tamanho: Inteiro (aprox. 800g)
 categoria: Pães
-estoque: 5
+estoque: 1
 ativo: true
 peso: 1
 _build:
