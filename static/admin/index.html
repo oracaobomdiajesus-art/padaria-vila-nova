@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Painel Admin · Padaria Vila Nova</title>
+<style>
+  :root {
+    --primary: #8B4513;
+    --secondary: #F5DEB3;
+    --card-bg: #FFFFFF;
+    --text: #4A2C13;
+    --ok: #2E7D32;
+    --err: #C62828;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(180deg, var(--secondary) 0%, #fff8ec 100%);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    color: var(--text);
+    padding: 24px 16px 64px;
+  }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  h1 {
+    color: var(--primary);
+    font-size: 1.4rem;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    margin-top: 0;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  label { font-weight: 600; font-size: 0.9rem; }
+  input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    margin-top: 6px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-secondary {
+    background: #eee;
+    color: var(--text);
+    font-size: 0.75rem;
+    padding: 6px 10px;
+  }
+  .row-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+  }
+  .categoria-block {
+    border-top: 1px solid #eee;
+    padding-top: 12px;
+    margin-top: 12px;
+  }
+  .categoria-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .categoria-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+  .categoria-tools {
+    display: flex;
+    gap: 6px;
+  }
+  .produto-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0 6px 24px;
+    font-size: 0.92rem;
+  }
+  .produto-row .status {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #eee;
+  }
+  .produto-row .status.ativo { background: #DFF5E1; color: var(--ok); }
+  .produto-row .status.inativo { background: #FBE0E0; color: var(--err); }
+  #resultados { margin-top: 16px; }
+  .resultado-item {
+    font-size: 0.85rem;
+    padding: 6px 10px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+  }
+  .resultado-item.ok { background: #DFF5E1; color: var(--ok); }
+  .resultado-item.erro { background: #FBE0E0; color: var(--err); }
+  #msg { font-size: 0.85rem; margin-top: 8px; min-height: 1.2em; }
+  #msg.erro { color: var(--err); }
+  #msg.ok { color: var(--ok); }
+  .hint { font-size: 0.78rem; opacity: 0.75; margin-top: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Painel Admin</h1>
+  <p class="subtitle">Padaria Vila Nova — ativar/desativar categorias e produtos em lote</p>
+
+  <div class="card">
+    <label for="senha">Senha do painel</label>
+    <input type="password" id="senha" autocomplete="off" placeholder="Digite a senha">
+    <div class="row-actions">
+      <button class="btn-primary" id="btn-carregar">Carregar dados</button>
+    </div>
+    <p id="msg"></p>
+  </div>
+
+  <div class="card" id="conteudo" hidden>
+    <div id="lista"></div>
+    <div class="row-actions">
+      <button class="btn-primary" id="btn-salvar">Salvar alterações</button>
+    </div>
+    <div id="resultados"></div>
+  </div>
+
+  <p class="hint">Esta página não é divulgada publicamente. Não compartilhe este link ou a senha.</p>
+</main>
+
+<script>
+(function () {
+  var senhaInput = document.getElementById('senha');
+  var btnCarregar = document.getElementById('btn-carregar');
+  var btnSalvar = document.getElementById('btn-salvar');
+  var msgEl = document.getElementById('msg');
+  var conteudoEl = document.getElementById('conteudo');
+  var listaEl = document.getElementById('lista');
+  var resultadosEl = document.getElementById('resultados');
+
+  var senhaAtual = '';
+  var dados = { categorias: [], produtos: [] };
+
+  function setMsg(text, kind) {
+    msgEl.textContent = text || '';
+    msgEl.className = kind || '';
+  }
+
+  function api(path, opts) {
+    opts = opts || {};
+    var headers = opts.headers || {};
+    headers['X-Admin-Password'] = senhaAtual;
+    if (opts.body) headers['Content-Type'] = 'application/json';
+    return fetch(path, { method: opts.method || 'GET', headers: headers, body: opts.body })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          if (!res.ok) throw new Error(data && data.error ? data.error : ('Erro ' + res.status));
+          return data;
+        });
+      });
+  }
+
+  function render() {
+    listaEl.innerHTML = '';
+
+    dados.categorias.slice().sort(function (a, b) { return a.title.localeCompare(b.title); }).forEach(function (cat) {
+      var produtosDaCategoria = dados.produtos.filter(function (p) { return p.categoria === cat.title; });
+
+      var block = document.createElement('div');
+      block.className = 'categoria-block';
+
+      var header = document.createElement('div');
+      header.className = 'categoria-header';
+
+      var titleWrap = document.createElement('label');
+      titleWrap.className = 'categoria-title';
+      var catCheckbox = document.createElement('input');
+      catCheckbox.type = 'checkbox';
+      catCheckbox.checked = !!cat.ativo;
+      catCheckbox.dataset.path = cat.path;
+      catCheckbox.dataset.kind = 'categoria';
+      titleWrap.appendChild(catCheckbox);
+      titleWrap.appendChild(document.createTextNode(' ' + cat.title));
+      header.appendChild(titleWrap);
+
+      var tools = document.createElement('div');
+      tools.className = 'categoria-tools';
+      var btnOn = document.createElement('button');
+      btnOn.className = 'btn-secondary';
+      btnOn.type = 'button';
+      btnOn.textContent = 'Marcar produtos: todos ativos';
+      btnOn.addEventListener('click', function () { setProdutosCategoria(cat.title, true); });
+      var btnOff = document.createElement('button');
+      btnOff.className = 'btn-secondary';
+      btnOff.type = 'button';
+      btnOff.textContent = 'Marcar produtos: todos inativos';
+      btnOff.addEventListener('click', function () { setProdutosCategoria(cat.title, false); });
+      tools.appendChild(btnOn);
+      tools.appendChild(btnOff);
+      header.appendChild(tools);
+
+      block.appendChild(header);
+
+      produtosDaCategoria.slice().sort(function (a, b) { return a.title.localeCompare(b.title); }).forEach(function (prod) {
+        var row = document.createElement('div');
+        row.className = 'produto-row';
+
+        var checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = !!prod.ativo;
+        checkbox.dataset.path = prod.path;
+        checkbox.dataset.kind = 'produto';
+        checkbox.addEventListener('change', function () { atualizarStatus(row, checkbox.checked); });
+
+        var label = document.createElement('span');
+        label.textContent = prod.title;
+
+        var status = document.createElement('span');
+        status.className = 'status ' + (prod.ativo ? 'ativo' : 'inativo');
+        status.textContent = prod.ativo ? 'ativo' : 'inativo';
+
+        row.appendChild(checkbox);
+        row.appendChild(label);
+        row.appendChild(status);
+        block.appendChild(row);
+      });
+
+      listaEl.appendChild(block);
+    });
+  }
+
+  function atualizarStatus(row, ativo) {
+    var status = row.querySelector('.status');
+    status.className = 'status ' + (ativo ? 'ativo' : 'inativo');
+    status.textContent = ativo ? 'ativo' : 'inativo';
+  }
+
+  function setProdutosCategoria(categoriaTitle, ativo) {
+    var checkboxes = listaEl.querySelectorAll('input[data-kind="produto"]');
+    checkboxes.forEach(function (cb) {
+      var prod = dados.produtos.find(function (p) { return p.path === cb.dataset.path; });
+      if (prod && prod.categoria === categoriaTitle) {
+        cb.checked = ativo;
+        atualizarStatus(cb.closest('.produto-row'), ativo);
+      }
+    });
+  }
+
+  btnCarregar.addEventListener('click', function () {
+    var senha = senhaInput.value;
+    if (!senha) {
+      setMsg('Digite a senha.', 'erro');
+      return;
+    }
+    senhaAtual = senha;
+    setMsg('Carregando...', '');
+    btnCarregar.disabled = true;
+    api('/api/list')
+      .then(function (data) {
+        dados = data;
+        render();
+        conteudoEl.hidden = false;
+        setMsg('Dados carregados.', 'ok');
+      })
+      .catch(function (err) {
+        conteudoEl.hidden = true;
+        setMsg(err.message, 'erro');
+      })
+      .finally(function () { btnCarregar.disabled = false; });
+  });
+
+  btnSalvar.addEventListener('click', function () {
+    var checkboxes = listaEl.querySelectorAll('input[type="checkbox"]');
+    var items = Array.prototype.map.call(checkboxes, function (cb) {
+      return { path: cb.dataset.path, ativo: cb.checked };
+    });
+
+    resultadosEl.innerHTML = '';
+    btnSalvar.disabled = true;
+    setMsg('Salvando...', '');
+
+    api('/api/toggle', { method: 'POST', body: JSON.stringify({ items: items }) })
+      .then(function (data) {
+        setMsg('Concluído.', 'ok');
+        (data.results || []).forEach(function (r) {
+          var div = document.createElement('div');
+          div.className = 'resultado-item ' + (r.ok ? 'ok' : 'erro');
+          div.textContent = r.path + ': ' + (r.ok ? (r.unchanged ? 'sem alterações' : 'salvo com sucesso') : ('erro — ' + r.error));
+          resultadosEl.appendChild(div);
+        });
+      })
+      .catch(function (err) {
+        setMsg(err.message, 'erro');
+      })
+      .finally(function () { btnSalvar.disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>
