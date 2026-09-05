@@ -14,8 +14,8 @@ content:
         hidden: true
         type: "string"
       - name: "body"
-        label: "Links úteis"
-        type: "rich-text"
+        label: "Links úteis (copie o endereço e cole no navegador)"
+        type: "text"
       - name: "_build"
         label: false
         hidden: true

@@ -4,16 +4,15 @@ _build:
   render: never
   list: never
 ---
-## 🔧 Painel de estoque
+PAINEL DE ESTOQUE (ativar/desativar produtos e categorias, editar estoque)
+Copie o endereço abaixo e cole no navegador:
 
-Ativar/desativar produtos e categorias em lote, e editar estoque.
+https://padaria-vila-nova.pages.dev/admin/
 
-[Abrir painel de estoque](https://padaria-vila-nova.pages.dev/admin/)
 
-## 📊 Estatísticas de visitas do site
+ESTATÍSTICAS DE VISITAS DO SITE (Cloudflare)
+Copie o endereço abaixo e cole no navegador:
 
-Veja quantas pessoas visitaram o site, quais páginas mais acessaram, etc.
+https://dash.cloudflare.com/ef2c88b340d042ece17a7087e722fc8
 
-[Abrir painel da Cloudflare](https://dash.cloudflare.com/ef2c88b340d042ece17a7087e722fc8)
-
-Depois de abrir, no menu lateral toque em **"Analytics & Logs"** → **"Web Analytics"**.
+Depois de abrir, toque em "Analytics & Logs" e depois em "Web Analytics".
