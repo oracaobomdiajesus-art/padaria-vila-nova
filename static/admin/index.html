@@ -334,6 +334,24 @@
     return (v || '').toString().trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   }
 
+  // Alguns apps de planilha (principalmente no celular) salvam o CSV
+  // reinterpretando o UTF-8 como Latin-1, o que transforma "á" em "Ã¡".
+  // Essa função tenta reverter esse tipo de acento embaralhado.
+  function corrigirMojibake(str) {
+    if (!str) return str;
+    try {
+      var bytes = new Uint8Array(str.length);
+      for (var i = 0; i < str.length; i++) {
+        var code = str.charCodeAt(i);
+        if (code > 255) return str;
+        bytes[i] = code;
+      }
+      return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch (e) {
+      return str;
+    }
+  }
+
   function csvCampo(valor) {
     var str = valor === null || valor === undefined ? '' : String(valor);
     if (str.indexOf(';') !== -1 || str.indexOf('"') !== -1 || str.indexOf('\n') !== -1) {
@@ -443,10 +461,13 @@
 
     for (var i = 1; i < linhas.length; i++) {
       var cols = parseCsvLinha(linhas[i], delimitador);
+      var nomeOriginal = idxProduto !== -1 ? (cols[idxProduto] || '') : '';
+      var nomeCorrigido = corrigirMojibake(nomeOriginal);
       var codigo = idxCodigo !== -1 ? normalizarTexto(cols[idxCodigo]) : '';
-      var nome = idxProduto !== -1 ? normalizarTexto(cols[idxProduto]) : '';
+      var nome = normalizarTexto(nomeOriginal);
+      var nomeAlt = normalizarTexto(nomeCorrigido);
       var estoqueTxt = (cols[idxEstoque] || '').trim();
-      var rotulo = (idxProduto !== -1 && cols[idxProduto]) ? cols[idxProduto] : ((idxCodigo !== -1 && cols[idxCodigo]) ? cols[idxCodigo] : ('linha ' + (i + 1)));
+      var rotulo = nomeCorrigido || (idxCodigo !== -1 && cols[idxCodigo]) || ('linha ' + (i + 1));
 
       if (estoqueTxt === '') continue;
 
@@ -461,6 +482,8 @@
         candidatos = porCodigo[codigo];
       } else if (nome && porNome[nome] && porNome[nome].length === 1) {
         candidatos = porNome[nome];
+      } else if (nomeAlt && nomeAlt !== nome && porNome[nomeAlt] && porNome[nomeAlt].length === 1) {
+        candidatos = porNome[nomeAlt];
       }
 
       if (!candidatos) {
