@@ -7,7 +7,6 @@ export const BRANCH = "main";
 export const ALLOWED_DIRS = ["content/produtos", "content/categorias"];
 export const CATEGORIA_MIX_PATH = "content/categorias/mix.md";
 export const CATEGORIA_MIX_TITLE = "Mix";
-export const MARCADOR_CATEGORIAS_PLANILHA = "#CATEGORIAS_DISPONIVEIS";
 
 export function timingSafeEqual(a, b) {
   if (typeof a !== "string" || typeof b !== "string") return false;
@@ -232,13 +231,18 @@ const COLUNA_EM_PROMOCAO = 5;
 const COLUNA_ATIVO = 8;
 const COLUNA_EXPOSICAO = 9;
 
-// Monta as linhas da planilha a partir do catálogo, incluindo a legenda de
-// categorias existentes no final (ignorada na importação, ver o marcador
-// MARCADOR_CATEGORIAS_PLANILHA) e um aviso de quando a última sincronização
-// automática aconteceu, na própria linha de cabeçalho. Também devolve em que
-// linhas (1-indexado, como no Sheets) cada trecho ficou, para dar pra
-// aplicar menus suspensos (colunas Categoria/EmPromocao/Ativo/Exposicao)
-// exatamente sobre os produtos e apontando pra lista de categorias certa.
+// A lista de categorias existentes mora numa aba separada (não misturada
+// com os produtos), criada e mantida automaticamente. Linha 1 é um título;
+// a partir da linha 2 vem uma categoria por linha. O intervalo de origem do
+// menu suspenso de Categoria é sempre esse (fixo, com folga), então não
+// precisa recalcular a cada sincronização.
+const CATEGORIAS_ABA_TITULO = "Categorias";
+const CATEGORIAS_ABA_FONTE = { inicio: 2, fim: 1000 };
+
+// Monta as linhas da aba principal (cabeçalho + produtos, sem nenhuma
+// legenda misturada) e devolve em que linhas (1-indexado, como no Sheets)
+// os produtos ficaram, pra dar pra aplicar os menus suspensos exatamente
+// sobre eles.
 export function montarLinhasPlanilha(produtos, categorias) {
   const cabecalho = [
     "Caminho (não editar)",
@@ -286,40 +290,17 @@ export function montarLinhasPlanilha(produtos, categorias) {
     .map((c) => c.title)
     .sort((a, b) => a.localeCompare(b));
 
-  linhas.push([
-    MARCADOR_CATEGORIAS_PLANILHA,
-    "Categorias existentes — use exatamente um destes nomes na coluna Categoria:",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-  ]);
-  const categoriaListaInicio = linhas.length + 1;
-  categoriasAtivas.forEach((nomeCat) => {
-    linhas.push(["", nomeCat, "", "", "", "", "", "", "", ""]);
-  });
-  const categoriaListaRange = categoriasAtivas.length
-    ? { inicio: categoriaListaInicio, fim: linhas.length }
-    : null;
+  return { linhas, produtosRange, categoriasAtivas };
+}
 
-  linhas.push([
-    "",
-    `Categoria não reconhecida vira automaticamente "${CATEGORIA_MIX_TITLE}" ao importar.`,
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-  ]);
-
-  return { linhas, produtosRange, categoriaListaRange };
+// Monta as linhas da aba "Categorias": um título, uma categoria por linha,
+// e uma nota no final. Só existe pra servir de referência visual e de fonte
+// do menu suspenso — não é lida na importação.
+function montarLinhasAbaCategorias(categoriasAtivas) {
+  const linhas = [["Categorias existentes — use exatamente um destes nomes na coluna Categoria da aba principal:"]];
+  categoriasAtivas.forEach((nomeCat) => linhas.push([nomeCat]));
+  linhas.push([`Categoria digitada na aba principal que não estiver nesta lista vira automaticamente "${CATEGORIA_MIX_TITLE}" ao importar.`]);
+  return linhas;
 }
 
 function requisicaoValidacaoLista(sheetId, range, coluna, valores) {
@@ -341,20 +322,24 @@ function requisicaoValidacaoLista(sheetId, range, coluna, valores) {
   };
 }
 
-function requisicaoValidacaoRange(sheetId, rangeAlvo, coluna, rangeFonte) {
+function requisicaoValidacaoCategoriaCruzada(sheetId, produtosRange) {
   return {
     setDataValidation: {
       range: {
         sheetId,
-        startRowIndex: rangeAlvo.inicio - 1,
-        endRowIndex: rangeAlvo.fim,
-        startColumnIndex: coluna,
-        endColumnIndex: coluna + 1,
+        startRowIndex: produtosRange.inicio - 1,
+        endRowIndex: produtosRange.fim,
+        startColumnIndex: COLUNA_CATEGORIA,
+        endColumnIndex: COLUNA_CATEGORIA + 1,
       },
       rule: {
         condition: {
           type: "ONE_OF_RANGE",
-          values: [{ userEnteredValue: `=$B$${rangeFonte.inicio}:$B$${rangeFonte.fim}` }],
+          values: [
+            {
+              userEnteredValue: `=${CATEGORIAS_ABA_TITULO}!A${CATEGORIAS_ABA_FONTE.inicio}:A${CATEGORIAS_ABA_FONTE.fim}`,
+            },
+          ],
         },
         showCustomUi: true,
         strict: false,
@@ -363,38 +348,80 @@ function requisicaoValidacaoRange(sheetId, rangeAlvo, coluna, rangeFonte) {
   };
 }
 
-// Aplica menus suspensos (data validation) nas colunas Categoria, EmPromocao,
-// Ativo e Exposicao, sobre as linhas de produto atuais. Categoria aponta
-// para a lista de categorias existentes escrita no fim da planilha (que já
-// fica sempre atualizada a cada sincronização); as demais usam Sim/Nao fixo.
-// `strict: false` deixa o menu como sugestão — digitar outra coisa continua
-// funcionando (o servidor já lida com isso, ex.: categoria vira "Mix").
-// Reaplicado a cada sincronização porque as linhas de produtos e da lista de
-// categorias mudam de posição conforme produtos são criados/removidos.
-async function aplicarMenusSuspensos(env, accessToken, produtosRange, categoriaListaRange) {
-  if (!produtosRange) return { ok: true };
-
+// Garante que a aba "Categorias" exista (cria se ainda não existir) e
+// devolve o sheetId numérico da aba principal (a primeira da planilha),
+// necessário pra apontar os menus suspensos pro lugar certo.
+async function garantirAbaCategorias(env, accessToken) {
   const metaRes = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}?fields=sheets.properties.sheetId`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}?fields=sheets.properties(sheetId,title)`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
   if (!metaRes.ok) {
     return { ok: false, error: `Não foi possível ler a estrutura da planilha (status ${metaRes.status})` };
   }
   const meta = await metaRes.json();
-  const sheetId = meta.sheets && meta.sheets[0] && meta.sheets[0].properties.sheetId;
-  if (sheetId === undefined) {
+  const abas = (meta.sheets || []).map((s) => s.properties);
+  const principal = abas[0];
+  if (!principal) {
     return { ok: false, error: "Planilha sem nenhuma aba encontrada" };
   }
 
-  const requests = [
-    requisicaoValidacaoLista(sheetId, produtosRange, COLUNA_EM_PROMOCAO, ["Sim", "Nao"]),
-    requisicaoValidacaoLista(sheetId, produtosRange, COLUNA_ATIVO, ["Sim", "Nao"]),
-    requisicaoValidacaoLista(sheetId, produtosRange, COLUNA_EXPOSICAO, ["Sim", "Nao"]),
-  ];
-  if (categoriaListaRange) {
-    requests.push(requisicaoValidacaoRange(sheetId, produtosRange, COLUNA_CATEGORIA, categoriaListaRange));
+  const jaExiste = abas.some((a) => a.title === CATEGORIAS_ABA_TITULO);
+  if (!jaExiste) {
+    const addRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}:batchUpdate`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ requests: [{ addSheet: { properties: { title: CATEGORIAS_ABA_TITULO } } }] }),
+    });
+    if (!addRes.ok) {
+      return { ok: false, error: `Não foi possível criar a aba de categorias (status ${addRes.status})` };
+    }
   }
+
+  return { ok: true, sheetIdPrincipal: principal.sheetId };
+}
+
+async function escreverAbaCategorias(env, accessToken, categoriasAtivas) {
+  const sheetsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}/values`;
+
+  const clearRes = await fetch(`${sheetsUrl}/${encodeURIComponent(`${CATEGORIAS_ABA_TITULO}!A1:A1000`)}:clear`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!clearRes.ok) {
+    return { ok: false, error: `Não foi possível limpar a aba de categorias (status ${clearRes.status})` };
+  }
+
+  const updateRes = await fetch(
+    `${sheetsUrl}/${encodeURIComponent(`${CATEGORIAS_ABA_TITULO}!A1`)}?valueInputOption=RAW`,
+    {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ values: montarLinhasAbaCategorias(categoriasAtivas) }),
+    }
+  );
+  if (!updateRes.ok) {
+    return { ok: false, error: `Não foi possível gravar a aba de categorias (status ${updateRes.status})` };
+  }
+  return { ok: true };
+}
+
+// Aplica menus suspensos (data validation) nas colunas Categoria, EmPromocao,
+// Ativo e Exposicao, sobre as linhas de produto atuais. Categoria aponta
+// para a aba "Categorias" (mantida sempre atualizada à parte); as demais
+// usam Sim/Nao fixo. `strict: false` deixa o menu como sugestão — digitar
+// outra coisa continua funcionando (o servidor já lida com isso, ex.:
+// categoria vira "Mix"). Reaplicado a cada sincronização porque as linhas
+// de produtos mudam de posição conforme produtos são criados/removidos.
+async function aplicarMenusSuspensos(env, accessToken, produtosRange, sheetIdPrincipal) {
+  if (!produtosRange) return { ok: true };
+
+  const requests = [
+    requisicaoValidacaoLista(sheetIdPrincipal, produtosRange, COLUNA_EM_PROMOCAO, ["Sim", "Nao"]),
+    requisicaoValidacaoLista(sheetIdPrincipal, produtosRange, COLUNA_ATIVO, ["Sim", "Nao"]),
+    requisicaoValidacaoLista(sheetIdPrincipal, produtosRange, COLUNA_EXPOSICAO, ["Sim", "Nao"]),
+    requisicaoValidacaoCategoriaCruzada(sheetIdPrincipal, produtosRange),
+  ];
 
   const batchRes = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}:batchUpdate`,
@@ -419,7 +446,7 @@ export async function exportarCatalogoParaSheet(env) {
   }
 
   const { produtos, categorias } = await getCatalogo(env);
-  const { linhas, produtosRange, categoriaListaRange } = montarLinhasPlanilha(produtos, categorias);
+  const { linhas, produtosRange, categoriasAtivas } = montarLinhasPlanilha(produtos, categorias);
 
   const accessToken = await getGoogleAccessToken(env);
   const sheetsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}/values`;
@@ -448,11 +475,21 @@ export async function exportarCatalogoParaSheet(env) {
     return { ok: false, error: `Não foi possível gravar na planilha (status ${updateRes.status})` };
   }
 
-  const menus = await aplicarMenusSuspensos(env, accessToken, produtosRange, categoriaListaRange);
+  // A partir daqui os dados principais já estão salvos com sucesso — o que
+  // falhar dessa parte em diante (aba de categorias, menus suspensos) não
+  // desfaz a sincronização, só volta como um aviso.
+  const aba = await garantirAbaCategorias(env, accessToken);
+  if (!aba.ok) {
+    return { ok: true, avisoMenus: aba.error };
+  }
+
+  const escreveu = await escreverAbaCategorias(env, accessToken, categoriasAtivas);
+  if (!escreveu.ok) {
+    return { ok: true, avisoMenus: escreveu.error };
+  }
+
+  const menus = await aplicarMenusSuspensos(env, accessToken, produtosRange, aba.sheetIdPrincipal);
   if (!menus.ok) {
-    // Os dados já foram gravados com sucesso; só os menus suspensos falharam
-    // (ex.: permissão insuficiente do service account) — não vale desfazer
-    // a sincronização por isso, só avisar.
     return { ok: true, avisoMenus: menus.error };
   }
 
