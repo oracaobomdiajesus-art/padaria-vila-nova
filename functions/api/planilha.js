@@ -66,7 +66,7 @@ export async function onRequestPost(context) {
     if (!resultado.ok) {
       return jsonResponse({ error: resultado.error }, 502);
     }
-    return jsonResponse({ ok: true });
+    return jsonResponse({ ok: true, avisoMenus: resultado.avisoMenus });
   } catch (err) {
     return jsonResponse({ error: err.message || "Erro ao gravar na planilha" }, 502);
   }

@@ -225,10 +225,20 @@ export async function getCatalogo(env) {
   return { produtos, categorias };
 }
 
+// Índices de coluna (0-indexado) usados tanto para montar as linhas quanto
+// para aplicar os menus suspensos (data validation) nelas.
+const COLUNA_CATEGORIA = 1;
+const COLUNA_EM_PROMOCAO = 5;
+const COLUNA_ATIVO = 8;
+const COLUNA_EXPOSICAO = 9;
+
 // Monta as linhas da planilha a partir do catálogo, incluindo a legenda de
 // categorias existentes no final (ignorada na importação, ver o marcador
 // MARCADOR_CATEGORIAS_PLANILHA) e um aviso de quando a última sincronização
-// automática aconteceu, na própria linha de cabeçalho.
+// automática aconteceu, na própria linha de cabeçalho. Também devolve em que
+// linhas (1-indexado, como no Sheets) cada trecho ficou, para dar pra
+// aplicar menus suspensos (colunas Categoria/EmPromocao/Ativo/Exposicao)
+// exatamente sobre os produtos e apontando pra lista de categorias certa.
 export function montarLinhasPlanilha(produtos, categorias) {
   const cabecalho = [
     "Caminho (não editar)",
@@ -252,23 +262,24 @@ export function montarLinhasPlanilha(produtos, categorias) {
 
   const linhas = [[...cabecalho, `Última sincronização automática: ${agora}`]];
 
-  produtos
-    .slice()
-    .sort((a, b) => a.title.localeCompare(b.title))
-    .forEach((p) => {
-      linhas.push([
-        p.path,
-        p.categoria || "",
-        p.title,
-        p.codigo || "",
-        p.preco || "",
-        p.em_promocao ? "Sim" : "Nao",
-        p.preco_promocional || "",
-        p.estoque || "",
-        p.ativo ? "Sim" : "Nao",
-        p.exposicao ? "Sim" : "Nao",
-      ]);
-    });
+  const produtosOrdenados = produtos.slice().sort((a, b) => a.title.localeCompare(b.title));
+  produtosOrdenados.forEach((p) => {
+    linhas.push([
+      p.path,
+      p.categoria || "",
+      p.title,
+      p.codigo || "",
+      p.preco || "",
+      p.em_promocao ? "Sim" : "Nao",
+      p.preco_promocional || "",
+      p.estoque || "",
+      p.ativo ? "Sim" : "Nao",
+      p.exposicao ? "Sim" : "Nao",
+    ]);
+  });
+  const produtosRange = produtosOrdenados.length
+    ? { inicio: 2, fim: linhas.length }
+    : null;
 
   const categoriasAtivas = categorias
     .filter((c) => c.ativo)
@@ -287,9 +298,14 @@ export function montarLinhasPlanilha(produtos, categorias) {
     "",
     "",
   ]);
+  const categoriaListaInicio = linhas.length + 1;
   categoriasAtivas.forEach((nomeCat) => {
     linhas.push(["", nomeCat, "", "", "", "", "", "", "", ""]);
   });
+  const categoriaListaRange = categoriasAtivas.length
+    ? { inicio: categoriaListaInicio, fim: linhas.length }
+    : null;
+
   linhas.push([
     "",
     `Categoria não reconhecida vira automaticamente "${CATEGORIA_MIX_TITLE}" ao importar.`,
@@ -303,7 +319,95 @@ export function montarLinhasPlanilha(produtos, categorias) {
     "",
   ]);
 
-  return linhas;
+  return { linhas, produtosRange, categoriaListaRange };
+}
+
+function requisicaoValidacaoLista(sheetId, range, coluna, valores) {
+  return {
+    setDataValidation: {
+      range: {
+        sheetId,
+        startRowIndex: range.inicio - 1,
+        endRowIndex: range.fim,
+        startColumnIndex: coluna,
+        endColumnIndex: coluna + 1,
+      },
+      rule: {
+        condition: { type: "ONE_OF_LIST", values: valores.map((v) => ({ userEnteredValue: v })) },
+        showCustomUi: true,
+        strict: false,
+      },
+    },
+  };
+}
+
+function requisicaoValidacaoRange(sheetId, rangeAlvo, coluna, rangeFonte) {
+  return {
+    setDataValidation: {
+      range: {
+        sheetId,
+        startRowIndex: rangeAlvo.inicio - 1,
+        endRowIndex: rangeAlvo.fim,
+        startColumnIndex: coluna,
+        endColumnIndex: coluna + 1,
+      },
+      rule: {
+        condition: {
+          type: "ONE_OF_RANGE",
+          values: [{ userEnteredValue: `=$B$${rangeFonte.inicio}:$B$${rangeFonte.fim}` }],
+        },
+        showCustomUi: true,
+        strict: false,
+      },
+    },
+  };
+}
+
+// Aplica menus suspensos (data validation) nas colunas Categoria, EmPromocao,
+// Ativo e Exposicao, sobre as linhas de produto atuais. Categoria aponta
+// para a lista de categorias existentes escrita no fim da planilha (que já
+// fica sempre atualizada a cada sincronização); as demais usam Sim/Nao fixo.
+// `strict: false` deixa o menu como sugestão — digitar outra coisa continua
+// funcionando (o servidor já lida com isso, ex.: categoria vira "Mix").
+// Reaplicado a cada sincronização porque as linhas de produtos e da lista de
+// categorias mudam de posição conforme produtos são criados/removidos.
+async function aplicarMenusSuspensos(env, accessToken, produtosRange, categoriaListaRange) {
+  if (!produtosRange) return { ok: true };
+
+  const metaRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}?fields=sheets.properties.sheetId`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!metaRes.ok) {
+    return { ok: false, error: `Não foi possível ler a estrutura da planilha (status ${metaRes.status})` };
+  }
+  const meta = await metaRes.json();
+  const sheetId = meta.sheets && meta.sheets[0] && meta.sheets[0].properties.sheetId;
+  if (sheetId === undefined) {
+    return { ok: false, error: "Planilha sem nenhuma aba encontrada" };
+  }
+
+  const requests = [
+    requisicaoValidacaoLista(sheetId, produtosRange, COLUNA_EM_PROMOCAO, ["Sim", "Nao"]),
+    requisicaoValidacaoLista(sheetId, produtosRange, COLUNA_ATIVO, ["Sim", "Nao"]),
+    requisicaoValidacaoLista(sheetId, produtosRange, COLUNA_EXPOSICAO, ["Sim", "Nao"]),
+  ];
+  if (categoriaListaRange) {
+    requests.push(requisicaoValidacaoRange(sheetId, produtosRange, COLUNA_CATEGORIA, categoriaListaRange));
+  }
+
+  const batchRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}:batchUpdate`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ requests }),
+    }
+  );
+  if (!batchRes.ok) {
+    return { ok: false, error: `Não foi possível aplicar os menus suspensos (status ${batchRes.status})` };
+  }
+  return { ok: true };
 }
 
 // Gera a planilha a partir do catálogo atual e grava no Google Sheets
@@ -315,13 +419,14 @@ export async function exportarCatalogoParaSheet(env) {
   }
 
   const { produtos, categorias } = await getCatalogo(env);
-  const linhas = montarLinhasPlanilha(produtos, categorias);
+  const { linhas, produtosRange, categoriaListaRange } = montarLinhasPlanilha(produtos, categorias);
 
   const accessToken = await getGoogleAccessToken(env);
   const sheetsUrl = `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEET_ID}/values`;
 
   // Limpa a aba inteira antes de escrever, para não sobrar linha antiga de
-  // um produto removido do catálogo.
+  // um produto removido do catálogo. Isso limpa só os valores das células —
+  // formatação e menus suspensos (data validation) continuam intactos.
   const clearRes = await fetch(`${sheetsUrl}/A1:Z10000:clear`, {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -341,6 +446,14 @@ export async function exportarCatalogoParaSheet(env) {
 
   if (!updateRes.ok) {
     return { ok: false, error: `Não foi possível gravar na planilha (status ${updateRes.status})` };
+  }
+
+  const menus = await aplicarMenusSuspensos(env, accessToken, produtosRange, categoriaListaRange);
+  if (!menus.ok) {
+    // Os dados já foram gravados com sucesso; só os menus suspensos falharam
+    // (ex.: permissão insuficiente do service account) — não vale desfazer
+    // a sincronização por isso, só avisar.
+    return { ok: true, avisoMenus: menus.error };
   }
 
   return { ok: true };

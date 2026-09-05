@@ -815,8 +815,12 @@
     btnExportarSheets.disabled = true;
     setMsg('Gravando na planilha do Google Sheets...', '');
     api('/api/planilha', { method: 'POST' })
-      .then(function () {
-        setMsg('Planilha do Google Sheets atualizada com sucesso.', 'ok');
+      .then(function (data) {
+        if (data && data.avisoMenus) {
+          setMsg('Planilha atualizada, mas os menus suspensos não puderam ser aplicados: ' + data.avisoMenus, 'erro');
+        } else {
+          setMsg('Planilha do Google Sheets atualizada com sucesso.', 'ok');
+        }
       })
       .catch(function (err) {
         setMsg(err.message, 'erro');
