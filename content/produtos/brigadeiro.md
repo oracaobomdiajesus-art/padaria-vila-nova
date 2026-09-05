@@ -10,7 +10,7 @@ cores: "Granulado, Confeitos coloridos"
 tamanho: "Unidade"
 categoria: "Doces e Bolos"
 estoque: 60
-ativo: true
+ativo: false
 peso: 2
 _build:
   render: never
