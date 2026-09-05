@@ -233,10 +233,14 @@ const COLUNA_EM_PROMOCAO = 6;
 const COLUNA_ATIVO = 9;
 const COLUNA_EXPOSICAO = 10;
 
-// URL pública do site — usada pra montar o link de cada foto na coluna
-// "Imagem" da planilha (função =IMAGE do próprio Google Sheets, sem
-// precisar de nenhum script).
-const SITE_BASE_URL = "https://padaria-vila-nova.pages.dev";
+// Base pra montar o link de cada foto na coluna "Imagem" da planilha
+// (função =IMAGE do próprio Google Sheets, sem precisar de nenhum script).
+// Usa o GitHub em vez do domínio pages.dev: o robô que o Google usa pra
+// buscar a imagem por trás do =IMAGE() não consegue passar por alguma
+// proteção contra automação que o pages.dev aplica (o link abre normal num
+// navegador comum, só o robô do Google é bloqueado) — raw.githubusercontent.com
+// é a fonte padrão recomendada justamente por não ter esse problema.
+const IMAGEM_BASE_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/static`;
 
 // A lista de categorias existentes mora numa aba separada (não misturada
 // com os produtos), criada e mantida automaticamente. Linha 1 é um título;
@@ -281,7 +285,7 @@ export function montarLinhasPlanilha(produtos, categorias) {
     // "Imagem" direto na planilha (botão direito → Ocultar coluna); como a
     // sincronização só reescreve valores de célula, a coluna continua
     // oculta nas próximas vezes.
-    const imagemFormula = p.foto ? `=IMAGE("${SITE_BASE_URL}${p.foto}", 4, 50, 50)` : "";
+    const imagemFormula = p.foto ? `=IMAGE("${IMAGEM_BASE_URL}${p.foto}", 4, 50, 50)` : "";
     linhas.push([
       p.path,
       p.categoria || "",
