@@ -84,7 +84,18 @@
   .categoria-header {
     display: flex;
     align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    list-style: none;
   }
+  .categoria-header::-webkit-details-marker { display: none; }
+  .categoria-header::after {
+    content: '▾';
+    margin-left: auto;
+    opacity: 0.6;
+    transition: transform 0.15s ease;
+  }
+  details[open] > .categoria-header::after { transform: rotate(180deg); }
   .categoria-title {
     display: flex;
     align-items: center;
@@ -92,6 +103,15 @@
     font-weight: 700;
     color: var(--primary);
   }
+  .categoria-count { font-size: 0.8rem; opacity: 0.6; font-weight: 400; }
+  .categoria-promocoes > summary .categoria-title { color: #d32f2f; }
+  .promo-resumo-item {
+    padding: 6px 0 6px 24px;
+    font-size: 0.88rem;
+    border-top: 1px solid #f2ede2;
+  }
+  .promo-resumo-item:first-of-type { border-top: none; }
+  .promo-resumo-hint { font-size: 0.76rem; opacity: 0.65; padding-left: 24px; margin: 6px 0 0; }
   .produto-row {
     display: flex;
     flex-direction: column;
@@ -286,22 +306,70 @@
   function render() {
     listaEl.innerHTML = '';
 
+    // Resumo de promoções: só consulta (sem checkboxes/inputs) — a edição
+    // de verdade continua acontecendo uma única vez, dentro da categoria de
+    // cada produto. Duplicar os controles editáveis aqui criaria risco de
+    // uma cópia desfazer a alteração feita na outra ao salvar.
+    var produtosPromocao = dados.produtos
+      .filter(function (p) { return p.em_promocao; })
+      .sort(function (a, b) { return a.title.localeCompare(b.title); });
+
+    if (produtosPromocao.length) {
+      var promoBlock = document.createElement('details');
+      promoBlock.className = 'categoria-block categoria-promocoes';
+
+      var promoSummary = document.createElement('summary');
+      promoSummary.className = 'categoria-header';
+      var promoTitleWrap = document.createElement('span');
+      promoTitleWrap.className = 'categoria-title';
+      promoTitleWrap.textContent = '🔥 Promoções';
+      var promoCount = document.createElement('span');
+      promoCount.className = 'categoria-count';
+      promoCount.textContent = '(' + produtosPromocao.length + ')';
+      promoSummary.appendChild(promoTitleWrap);
+      promoSummary.appendChild(promoCount);
+      promoBlock.appendChild(promoSummary);
+
+      produtosPromocao.forEach(function (prod) {
+        var item = document.createElement('div');
+        item.className = 'promo-resumo-item';
+        var precoTxt = prod.preco_promocional
+          ? 'R$ ' + Number(prod.preco_promocional).toFixed(2).replace('.', ',')
+          : 'sem preço definido';
+        var texto = prod.title + ' — ' + precoTxt + ' · ' + (prod.categoria || 'sem categoria');
+        if (!prod.ativo) texto += ' · inativo';
+        item.textContent = texto;
+        promoBlock.appendChild(item);
+      });
+
+      var promoHint = document.createElement('p');
+      promoHint.className = 'promo-resumo-hint';
+      promoHint.textContent = 'Só consulta — pra editar, abra a categoria do produto na lista abaixo.';
+      promoBlock.appendChild(promoHint);
+
+      listaEl.appendChild(promoBlock);
+    }
+
     dados.categorias.slice().sort(function (a, b) { return a.title.localeCompare(b.title); }).forEach(function (cat) {
       var produtosDaCategoria = dados.produtos.filter(function (p) { return p.categoria === cat.title; });
 
-      var block = document.createElement('div');
+      var block = document.createElement('details');
       block.className = 'categoria-block';
 
-      var header = document.createElement('div');
+      var header = document.createElement('summary');
       header.className = 'categoria-header';
 
-      var titleWrap = document.createElement('label');
+      var titleWrap = document.createElement('span');
       titleWrap.className = 'categoria-title';
       var catCheckbox = document.createElement('input');
       catCheckbox.type = 'checkbox';
       catCheckbox.checked = !!cat.ativo;
       catCheckbox.dataset.path = cat.path;
       catCheckbox.dataset.kind = 'categoria';
+      // Sem isto, clicar na caixinha também abriria/fecharia a categoria,
+      // porque ela mora dentro do <summary> (só assim fica visível mesmo
+      // com a categoria recolhida).
+      catCheckbox.addEventListener('click', function (e) { e.stopPropagation(); });
 
       var catStatus = document.createElement('span');
       catStatus.className = 'status ' + (cat.ativo ? 'ativo' : 'inativo');
@@ -316,6 +384,11 @@
       titleWrap.appendChild(document.createTextNode(' ' + cat.title + ' '));
       titleWrap.appendChild(catStatus);
       header.appendChild(titleWrap);
+
+      var catCount = document.createElement('span');
+      catCount.className = 'categoria-count';
+      catCount.textContent = '(' + produtosDaCategoria.length + ')';
+      header.appendChild(catCount);
 
       block.appendChild(header);
 
