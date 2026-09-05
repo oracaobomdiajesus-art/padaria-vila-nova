@@ -9,7 +9,7 @@ descricao: "Pãozinho fresquinho, assado várias vezes ao dia."
 cores: ""
 tamanho: "Unidade"
 categoria: "Pães"
-estoque: 200
+estoque: 1
 ativo: true
 peso: 1
 _build:
