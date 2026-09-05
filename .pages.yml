@@ -210,6 +210,10 @@ content:
       - name: "preco_promocional"
         label: "Preço promocional (em reais, ex: 9.90 — só vale se 'Produto em promoção' estiver ligado)"
         type: "number"
+      - name: "exposicao"
+        label: "Destaque fixo na página inicial (só vale se estiver em promoção)"
+        type: "boolean"
+        default: false
       - name: "foto"
         label: "Foto do produto"
         type: "image"

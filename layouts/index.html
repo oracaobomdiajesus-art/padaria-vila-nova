@@ -85,7 +85,7 @@
     {{ $promoProdutos := slice }}
     {{ if $produtosSection }}
       {{ range where $produtosSection.Pages "Params.ativo" true }}
-        {{ if and .Params.em_promocao .Params.preco_promocional (in $activeCatTitles .Params.categoria) }}
+        {{ if and .Params.em_promocao .Params.preco_promocional .Params.exposicao (in $activeCatTitles .Params.categoria) }}
           {{ $promoProdutos = $promoProdutos | append . }}
         {{ end }}
       {{ end }}
@@ -95,6 +95,10 @@
     {{ if $promoProdutos }}
     <section class="promo-section">
       <h2>🔥 Promoções</h2>
+      <a class="link-card" href="{{ $produtosSection.RelPermalink }}">
+        <i class="fa-solid fa-store"></i>
+        <span>Ver todas as promoções</span>
+      </a>
       <div class="product-grid">
         {{ range $promoProdutos }}
         {{ $prod := . }}
@@ -113,10 +117,6 @@
         </a>
         {{ end }}
       </div>
-      <a class="link-card" href="{{ $produtosSection.RelPermalink }}">
-        <i class="fa-solid fa-store"></i>
-        <span>Ver todas as promoções</span>
-      </a>
     </section>
     {{ end }}
 

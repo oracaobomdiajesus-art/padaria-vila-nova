@@ -169,8 +169,8 @@ footer {
   text-align: center;
 }
 
-.promo-section .product-grid {
-  margin-bottom: 12px;
+.promo-section .link-card {
+  margin-bottom: 14px;
 }
 
 a.product-card {
@@ -329,6 +329,14 @@ a.product-card {
   opacity: 0.7;
   margin-right: auto;
   margin-left: 6px;
+}
+
+.categoria-promocoes summary {
+  border-bottom-color: #E8871E;
+}
+
+.categoria-promocoes summary::after {
+  color: #E8871E;
 }
 
 .categoria-group .product-grid {

@@ -16,8 +16,12 @@
 
     {{ $catSection := .Site.GetPage "categorias" }}
     {{ $activeCats := slice }}
+    {{ $activeCatTitles := slice }}
     {{ if $catSection }}
       {{ $activeCats = sort (where $catSection.Pages "Params.ativo" true) "Title" }}
+      {{ range $activeCats }}
+        {{ $activeCatTitles = $activeCatTitles | append .Title }}
+      {{ end }}
     {{ end }}
 
     {{ $hasProducts := false }}
@@ -30,7 +34,26 @@
       <button type="button" id="btn-abrir-todas" class="btn-toggle-all" data-state="closed">Abrir todas</button>
     </div>
 
+    {{ $promoProdutos := slice }}
+    {{ range where $.Pages "Params.ativo" true }}
+      {{ if and .Params.em_promocao .Params.preco_promocional (in $activeCatTitles .Params.categoria) }}
+        {{ $promoProdutos = $promoProdutos | append . }}
+      {{ end }}
+    {{ end }}
+    {{ $promoProdutos = sort $promoProdutos "Params.peso" }}
+
     <div id="lista-categorias">
+    {{ if $promoProdutos }}
+      {{ $hasProducts = true }}
+      <details class="categoria-group categoria-promocoes">
+        <summary>🔥 Promoções <span class="cat-count">({{ len $promoProdutos }})</span></summary>
+        <div class="product-grid">
+          {{ range $promoProdutos }}
+          {{ partial "product-card.html" . }}
+          {{ end }}
+        </div>
+      </details>
+    {{ end }}
     {{ range $activeCats }}
       {{ $catTitle := .Title }}
       {{ $prods := sort (where (where $.Pages "Params.categoria" $catTitle) "Params.ativo" true) "Params.peso" }}
@@ -40,41 +63,7 @@
         <summary>{{ $catTitle }} <span class="cat-count">({{ len $prods }})</span></summary>
         <div class="product-grid">
           {{ range $prods }}
-          {{ $temPrecoPromo := and .Params.em_promocao .Params.preco_promocional }}
-          {{ $precoEfetivo := .Params.preco }}
-          {{ if $temPrecoPromo }}{{ $precoEfetivo = .Params.preco_promocional }}{{ end }}
-          {{ $busca := lower (printf "%s %s %s" .Title (.Params.descricao | default "") (.Params.codigo | default "")) }}
-          <div class="product-card" data-busca="{{ $busca }}">
-            <div class="product-photo-wrap">
-              {{ with .Params.foto }}<img class="product-photo" src="{{ . | relURL }}" alt="{{ $.Title }}" loading="lazy">{{ end }}
-              {{ with .Params.codigo }}<span class="product-code-badge">#{{ . }}</span>{{ end }}
-              {{ if .Params.em_promocao }}<span class="promo-badge">🔥 Promoção</span>{{ end }}
-            </div>
-            <div class="product-info">
-              <h3>{{ .Title }}</h3>
-              {{ with .Params.descricao }}<p class="product-desc">{{ . }}</p>{{ end }}
-              {{ with .Params.cores }}<p class="product-meta"><strong>Cores:</strong> {{ . }}</p>{{ end }}
-              {{ with .Params.tamanho }}<p class="product-meta"><strong>Tamanho:</strong> {{ . }}</p>{{ end }}
-              {{ if $temPrecoPromo }}
-              <p class="product-price">
-                <span class="price-original">{{ printf "R$ %.2f" (mul .Params.preco 1.0) | replaceRE "\\." "," }}</span>
-                <span class="price-promo">{{ printf "R$ %.2f" (mul .Params.preco_promocional 1.0) | replaceRE "\\." "," }}</span>
-              </p>
-              {{ else }}
-              <p class="product-price">{{ printf "R$ %.2f" (mul .Params.preco 1.0) | replaceRE "\\." "," }}</p>
-              {{ end }}
-              <div class="cart-control" data-slug="{{ .Params.slug }}">
-                <button type="button" class="btn-add-cart" data-slug="{{ .Params.slug }}" data-title="{{ .Title }}" data-preco="{{ $precoEfetivo }}" data-codigo="{{ .Params.codigo }}">
-                  <i class="fa-solid fa-cart-plus"></i> Adicionar ao carrinho
-                </button>
-                <div class="qty-stepper" hidden>
-                  <button type="button" class="qty-btn qty-dec" aria-label="Diminuir quantidade">&minus;</button>
-                  <span class="qty-value">0</span>
-                  <button type="button" class="qty-btn qty-inc" aria-label="Aumentar quantidade">+</button>
-                </div>
-              </div>
-            </div>
-          </div>
+          {{ partial "product-card.html" . }}
           {{ end }}
         </div>
       </details>
