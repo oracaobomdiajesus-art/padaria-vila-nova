@@ -29,6 +29,17 @@ export function jsonResponse(body, status = 200) {
   });
 }
 
+export function slugify(texto) {
+  return (texto || "")
+    .toString()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export function isAllowedPath(path) {
   if (typeof path !== "string" || path.includes("..")) return false;
   return ALLOWED_DIRS.some((dir) => path.startsWith(`${dir}/`)) && path.endsWith(".md") && !path.endsWith("_index.md");

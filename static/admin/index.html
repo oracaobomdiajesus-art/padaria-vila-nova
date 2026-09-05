@@ -160,6 +160,22 @@
   }
   .csv-actions .hint { margin: 6px 0 0; width: 100%; }
   input[type="file"] { display: none; }
+  .historico-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 0;
+    border-top: 1px solid #eee;
+    font-size: 0.85rem;
+  }
+  .historico-info { flex: 1; }
+  .historico-data { font-size: 0.75rem; opacity: 0.7; }
+  .btn-restaurar {
+    font-size: 0.78rem;
+    padding: 6px 10px;
+    white-space: nowrap;
+  }
 </style>
 </head>
 <body>
@@ -190,9 +206,17 @@
       <input type="file" id="input-importar-csv" accept=".csv,text/csv">
       <button type="button" class="btn-secondary" id="btn-exportar-sheets">Exportar para o Google Sheets</button>
       <button type="button" class="btn-secondary" id="btn-importar-sheets">Importar do Google Sheets</button>
-      <p class="hint">"Exportar para o Google Sheets" grava a lista atual de produtos direto na sua planilha (sem baixar arquivo). Edite a coluna "Estoque" nela e depois toque em "Importar do Google Sheets" pra trazer de volta. "Exportar/Importar planilha (CSV)" é o método por arquivo, útil como alternativa.</p>
+      <p class="hint">A planilha agora traz uma coluna "Caminho" (não edite essa) que identifica cada produto — com ela, importar passa a atualizar qualquer campo (nome, categoria, preço...), criar produtos novos (linha sem caminho) e desativar os que sumirem da planilha. "Exportar para o Google Sheets" grava direto na planilha; "Exportar planilha (CSV)" baixa um arquivo.</p>
     </div>
     <div id="resultados"></div>
+  </div>
+
+  <div class="card" id="historico-card" hidden>
+    <div class="row-actions" style="margin-top:0;">
+      <button type="button" class="btn-secondary" id="btn-historico">Ver histórico de versões</button>
+    </div>
+    <p class="hint">Cada alteração salva no site vira uma versão. Restaurar uma versão desfaz só aquela alteração específica.</p>
+    <div id="lista-historico"></div>
   </div>
 
   <p class="hint">Esta página não é divulgada publicamente. Não compartilhe este link ou a senha.</p>
@@ -211,6 +235,9 @@
   var conteudoEl = document.getElementById('conteudo');
   var listaEl = document.getElementById('lista');
   var resultadosEl = document.getElementById('resultados');
+  var historicoCardEl = document.getElementById('historico-card');
+  var btnHistorico = document.getElementById('btn-historico');
+  var listaHistoricoEl = document.getElementById('lista-historico');
 
   var senhaAtual = '';
   var dados = { categorias: [], produtos: [] };
@@ -390,17 +417,24 @@
     return resultado;
   }
 
+  var CABECALHO_PLANILHA = ['Caminho (não editar)', 'Categoria', 'Produto', 'Codigo', 'Preco', 'EmPromocao', 'PrecoPromocional', 'Estoque', 'Ativo', 'Exposicao'];
+
   function montarLinhasProdutos() {
-    var linhas = [['Categoria', 'Produto', 'Codigo', 'Estoque', 'Ativo']];
+    var linhas = [CABECALHO_PLANILHA];
     dados.produtos.slice()
       .sort(function (a, b) { return a.title.localeCompare(b.title); })
       .forEach(function (p) {
         linhas.push([
+          p.path,
           p.categoria || '',
           p.title,
           p.codigo || '',
+          p.preco || '',
+          p.em_promocao ? 'Sim' : 'Nao',
+          p.preco_promocional || '',
           p.estoque || '',
-          p.ativo ? 'Sim' : 'Nao'
+          p.ativo ? 'Sim' : 'Nao',
+          p.exposicao ? 'Sim' : 'Nao'
         ]);
       });
     return linhas;
@@ -424,7 +458,6 @@
   }
 
   function mostrarProblemasImportacao(problemas) {
-    resultadosEl.innerHTML = '';
     if (!problemas.length) return;
     var titulo = document.createElement('div');
     titulo.className = 'resultado-item erro';
@@ -438,6 +471,20 @@
     });
   }
 
+  function parseBooleanPlanilha(valor) {
+    var v = normalizarTexto(valor);
+    if (!v) return false;
+    return v === 'sim' || v === 'true' || v === '1' || v === 'verdadeiro' || v === 'yes';
+  }
+
+  function indiceColuna(cabecalhoNormalizado, nomes) {
+    for (var i = 0; i < nomes.length; i++) {
+      var idx = cabecalhoNormalizado.indexOf(nomes[i]);
+      if (idx !== -1) return idx;
+    }
+    return -1;
+  }
+
   function processarCsvImportado(texto) {
     var linhas = texto.split(/\r\n|\n|\r/).filter(function (l) { return l.trim() !== ''; });
     if (linhas.length < 2) {
@@ -447,6 +494,13 @@
 
     var delimitador = linhas[0].indexOf(';') !== -1 ? ';' : ',';
     var cabecalho = parseCsvLinha(linhas[0], delimitador).map(normalizarTexto);
+    var idxCaminho = indiceColuna(cabecalho, ['caminho (nao editar)', 'caminho']);
+
+    if (idxCaminho !== -1) {
+      processarSincronizacaoCompleta(linhas, delimitador, cabecalho, idxCaminho);
+      return;
+    }
+
     var idxCodigo = cabecalho.indexOf('codigo');
     var idxProduto = cabecalho.indexOf('produto');
     var idxEstoque = cabecalho.indexOf('estoque');
@@ -511,6 +565,7 @@
 
     if (encontrados.length === 0) {
       setMsg('Nenhuma linha da planilha pôde ser identificada. Nada foi alterado.', 'erro');
+      resultadosEl.innerHTML = '';
       mostrarProblemasImportacao(problemas);
       return;
     }
@@ -537,7 +592,136 @@
     });
 
     setMsg(encontrados.length + ' produto(s) atualizados na tela a partir da planilha. Revise e clique em "Salvar alterações".', 'ok');
+    resultadosEl.innerHTML = '';
     mostrarProblemasImportacao(problemas);
+  }
+
+  // Modo completo: a planilha tem a coluna "Caminho", então ela é tratada
+  // como a fonte de verdade — produtos com caminho reconhecido são
+  // atualizados (nome/categoria/preço/etc incluídos), linhas sem caminho
+  // viram produtos novos, e produtos do catálogo ausentes na planilha são
+  // desativados. Grava direto (via /api/sincronizar), sem passar pela tela.
+  function processarSincronizacaoCompleta(linhas, delimitador, cabecalho, idxCaminho) {
+    var idxCategoria = indiceColuna(cabecalho, ['categoria']);
+    var idxProduto = indiceColuna(cabecalho, ['produto']);
+    var idxCodigo = indiceColuna(cabecalho, ['codigo']);
+    var idxPreco = indiceColuna(cabecalho, ['preco']);
+    var idxEmPromocao = indiceColuna(cabecalho, ['empromocao']);
+    var idxPrecoPromocional = indiceColuna(cabecalho, ['precopromocional']);
+    var idxEstoque = indiceColuna(cabecalho, ['estoque']);
+    var idxAtivo = indiceColuna(cabecalho, ['ativo']);
+    var idxExposicao = indiceColuna(cabecalho, ['exposicao']);
+
+    if (idxProduto === -1 || idxCategoria === -1 || idxPreco === -1) {
+      setMsg('A planilha precisa ter as colunas "Categoria", "Produto" e "Preco".', 'erro');
+      return;
+    }
+
+    var porPath = {};
+    dados.produtos.forEach(function (p) { porPath[p.path] = p; });
+
+    var atualizacoes = [];
+    var criacoes = [];
+    var problemas = [];
+    var caminhosNaPlanilha = {};
+
+    for (var i = 1; i < linhas.length; i++) {
+      var cols = parseCsvLinha(linhas[i], delimitador);
+      var caminho = (cols[idxCaminho] || '').trim();
+      var nome = corrigirMojibake((cols[idxProduto] || '').trim());
+      var categoria = corrigirMojibake((cols[idxCategoria] || '').trim());
+      var rotulo = nome || ('linha ' + (i + 1));
+
+      if (!nome && !categoria && cols.every(function (c) { return !c || !c.trim(); })) continue; // linha em branco
+
+      var item = {
+        title: nome,
+        categoria: categoria,
+        codigo: idxCodigo !== -1 ? (cols[idxCodigo] || '').trim() : '',
+        preco: idxPreco !== -1 ? (cols[idxPreco] || '').trim() : '',
+        em_promocao: idxEmPromocao !== -1 ? parseBooleanPlanilha(cols[idxEmPromocao]) : false,
+        preco_promocional: idxPrecoPromocional !== -1 ? (cols[idxPrecoPromocional] || '').trim() : '',
+        estoque: idxEstoque !== -1 ? (cols[idxEstoque] || '').trim() : '',
+        ativo: idxAtivo !== -1 ? parseBooleanPlanilha(cols[idxAtivo]) : true,
+        exposicao: idxExposicao !== -1 ? parseBooleanPlanilha(cols[idxExposicao]) : false
+      };
+
+      if (caminho) {
+        if (!porPath[caminho]) {
+          problemas.push(rotulo + ': caminho "' + caminho + '" não corresponde a nenhum produto conhecido — não alterado');
+          continue;
+        }
+        caminhosNaPlanilha[caminho] = true;
+        item.path = caminho;
+        atualizacoes.push(item);
+      } else {
+        if (!nome || !categoria) {
+          problemas.push(rotulo + ': produto novo precisa de Categoria e Produto preenchidos — ignorado');
+          continue;
+        }
+        criacoes.push(item);
+      }
+    }
+
+    var desativacoes = dados.produtos
+      .filter(function (p) { return p.ativo && !caminhosNaPlanilha[p.path]; })
+      .map(function (p) { return p.path; });
+
+    if (atualizacoes.length === 0 && criacoes.length === 0 && desativacoes.length === 0) {
+      setMsg('Nada para sincronizar — a planilha já corresponde ao catálogo atual.', '');
+      resultadosEl.innerHTML = '';
+      mostrarProblemasImportacao(problemas);
+      return;
+    }
+
+    var resumo = 'Sincronização completa a partir da planilha:\n\n';
+    resumo += '- ' + atualizacoes.length + ' produto(s) serão atualizados\n';
+    resumo += '- ' + criacoes.length + ' produto(s) novo(s) serão criados\n';
+    resumo += '- ' + desativacoes.length + ' produto(s) ausentes na planilha serão desativados\n';
+    if (desativacoes.length) {
+      resumo += '\nSerão desativados:\n' + desativacoes.map(function (path) {
+        var p = porPath[path];
+        return '- ' + (p ? p.title : path);
+      }).join('\n') + '\n';
+    }
+    if (problemas.length) {
+      resumo += '\n' + problemas.length + ' linha(s) com problema serão ignoradas (detalhes aparecem na tela depois).\n';
+    }
+    resumo += '\nIsso grava direto no site (GitHub) — dá pra desfazer depois pelo Histórico de versões. Deseja aplicar?';
+
+    if (!window.confirm(resumo)) {
+      setMsg('Sincronização cancelada.', '');
+      return;
+    }
+
+    setMsg('Sincronizando com o catálogo...', '');
+    api('/api/sincronizar', {
+      method: 'POST',
+      body: JSON.stringify({ atualizacoes: atualizacoes, criacoes: criacoes, desativacoes: desativacoes })
+    })
+      .then(function (data) {
+        setMsg('Sincronização concluída.', 'ok');
+        resultadosEl.innerHTML = '';
+        (data.resultados || []).forEach(function (r) {
+          var div = document.createElement('div');
+          div.className = 'resultado-item ' + (r.ok ? 'ok' : 'erro');
+          var texto = r.ok
+            ? (r.criado ? 'criado' : r.desativado ? 'desativado' : r.unchanged ? 'sem alterações' : 'atualizado')
+            : ('erro — ' + r.error);
+          div.textContent = r.path + ': ' + texto;
+          resultadosEl.appendChild(div);
+        });
+        mostrarProblemasImportacao(problemas);
+        return api('/api/list');
+      })
+      .then(function (data) {
+        if (!data) return;
+        dados = data;
+        render();
+      })
+      .catch(function (err) {
+        setMsg(err.message, 'erro');
+      });
   }
 
   btnCarregar.addEventListener('click', function () {
@@ -554,6 +738,7 @@
         dados = data;
         render();
         conteudoEl.hidden = false;
+        historicoCardEl.hidden = false;
         setMsg('Dados carregados.', 'ok');
       })
       .catch(function (err) {
@@ -641,6 +826,94 @@
         setMsg(err.message, 'erro');
       })
       .finally(function () { btnSalvar.disabled = false; });
+  });
+
+  function formatarDataHistorico(iso) {
+    try {
+      var d = new Date(iso);
+      return d.toLocaleString('pt-BR');
+    } catch (e) {
+      return iso;
+    }
+  }
+
+  function renderHistorico(historico) {
+    listaHistoricoEl.innerHTML = '';
+    if (!historico.length) {
+      listaHistoricoEl.textContent = 'Nenhuma versão encontrada.';
+      return;
+    }
+    historico.forEach(function (versao) {
+      var item = document.createElement('div');
+      item.className = 'historico-item';
+
+      var info = document.createElement('div');
+      info.className = 'historico-info';
+      var msg = document.createElement('div');
+      msg.textContent = versao.mensagem;
+      var data = document.createElement('div');
+      data.className = 'historico-data';
+      data.textContent = formatarDataHistorico(versao.data);
+      info.appendChild(msg);
+      info.appendChild(data);
+
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn-secondary btn-restaurar';
+      btn.textContent = 'Restaurar';
+      btn.addEventListener('click', function () {
+        restaurarVersao(versao, btn);
+      });
+
+      item.appendChild(info);
+      item.appendChild(btn);
+      listaHistoricoEl.appendChild(item);
+    });
+  }
+
+  function restaurarVersao(versao, btn) {
+    var confirmado = window.confirm(
+      'Restaurar a versão "' + versao.mensagem + '" (' + formatarDataHistorico(versao.data) + ')?\n\n' +
+      'Isso desfaz só essa alteração específica, direto no site. Deseja continuar?'
+    );
+    if (!confirmado) return;
+
+    btn.disabled = true;
+    setMsg('Restaurando versão...', '');
+    api('/api/historico', { method: 'POST', body: JSON.stringify({ sha: versao.sha }) })
+      .then(function (data) {
+        setMsg('Versão restaurada.', 'ok');
+        resultadosEl.innerHTML = '';
+        (data.resultados || []).forEach(function (r) {
+          var div = document.createElement('div');
+          div.className = 'resultado-item ' + (r.ok ? 'ok' : 'erro');
+          div.textContent = r.path + ': ' + (r.ok ? (r.acao || 'restaurado') : ('erro — ' + r.error));
+          resultadosEl.appendChild(div);
+        });
+        return api('/api/list');
+      })
+      .then(function (data) {
+        dados = data;
+        render();
+      })
+      .catch(function (err) {
+        setMsg(err.message, 'erro');
+      })
+      .finally(function () { btn.disabled = false; });
+  }
+
+  btnHistorico.addEventListener('click', function () {
+    btnHistorico.disabled = true;
+    setMsg('Carregando histórico...', '');
+    api('/api/historico')
+      .then(function (data) {
+        renderHistorico(data.historico || []);
+        setMsg('Histórico carregado.', 'ok');
+      })
+      .catch(function (err) {
+        setMsg(err.message, 'erro');
+      })
+      .finally(function () { btnHistorico.disabled = false; });
   });
 })();
 </script>
