@@ -13,6 +13,7 @@ https://padaria-vila-nova.pages.dev/admin/
 ESTATÍSTICAS DE VISITAS DO SITE (Cloudflare)
 Copie o endereço abaixo e cole no navegador:
 
-https://dash.cloudflare.com/ef2c88b340d042ece17a7087e722fc8
+https://dash.cloudflare.com/
 
-Depois de abrir, toque em "Analytics & Logs" e depois em "Web Analytics".
+Depois de abrir e fazer login, procure no menu lateral esquerdo por
+"Analytics & Logs" e toque em "Web Analytics".
