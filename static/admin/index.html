@@ -54,7 +54,8 @@
     border-radius: 8px;
     font-size: 1rem;
   }
-  button {
+  button, .btn-secondary {
+    display: inline-block;
     cursor: pointer;
     border: none;
     border-radius: 8px;
@@ -183,6 +184,12 @@
     <div class="row-actions">
       <button class="btn-primary" id="btn-salvar">Salvar alterações</button>
     </div>
+    <div class="csv-actions">
+      <button type="button" class="btn-secondary" id="btn-exportar-csv">Exportar planilha (CSV)</button>
+      <label class="btn-secondary" for="input-importar-csv">Importar planilha (CSV)</label>
+      <input type="file" id="input-importar-csv" accept=".csv,text/csv">
+      <p class="hint">A planilha exportada abre no Google Sheets ou Excel. Edite só a coluna "Estoque" e importe de volta — as outras colunas são só referência e não são alteradas.</p>
+    </div>
     <div id="resultados"></div>
   </div>
 
@@ -194,6 +201,8 @@
   var senhaInput = document.getElementById('senha');
   var btnCarregar = document.getElementById('btn-carregar');
   var btnSalvar = document.getElementById('btn-salvar');
+  var btnExportarCsv = document.getElementById('btn-exportar-csv');
+  var inputImportarCsv = document.getElementById('input-importar-csv');
   var msgEl = document.getElementById('msg');
   var conteudoEl = document.getElementById('conteudo');
   var listaEl = document.getElementById('lista');
@@ -321,6 +330,182 @@
     });
   }
 
+  function normalizarTexto(v) {
+    return (v || '').toString().trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+
+  function csvCampo(valor) {
+    var str = valor === null || valor === undefined ? '' : String(valor);
+    if (str.indexOf(';') !== -1 || str.indexOf('"') !== -1 || str.indexOf('\n') !== -1) {
+      return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+  }
+
+  function parseCsvLinha(linha, delim) {
+    var resultado = [];
+    var atual = '';
+    var entreAspas = false;
+    for (var i = 0; i < linha.length; i++) {
+      var ch = linha[i];
+      if (entreAspas) {
+        if (ch === '"') {
+          if (linha[i + 1] === '"') { atual += '"'; i++; }
+          else { entreAspas = false; }
+        } else {
+          atual += ch;
+        }
+      } else if (ch === '"') {
+        entreAspas = true;
+      } else if (ch === delim) {
+        resultado.push(atual);
+        atual = '';
+      } else {
+        atual += ch;
+      }
+    }
+    resultado.push(atual);
+    return resultado;
+  }
+
+  function exportarCsv() {
+    var linhas = [['Categoria', 'Produto', 'Codigo', 'Estoque', 'Ativo'].join(';')];
+    dados.produtos.slice()
+      .sort(function (a, b) { return a.title.localeCompare(b.title); })
+      .forEach(function (p) {
+        linhas.push([
+          csvCampo(p.categoria || ''),
+          csvCampo(p.title),
+          csvCampo(p.codigo || ''),
+          csvCampo(p.estoque || ''),
+          p.ativo ? 'Sim' : 'Nao'
+        ].join(';'));
+      });
+
+    var conteudo = '﻿' + linhas.join('\r\n');
+    var blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'estoque-padaria-vila-nova-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function mostrarProblemasImportacao(problemas) {
+    resultadosEl.innerHTML = '';
+    if (!problemas.length) return;
+    var titulo = document.createElement('div');
+    titulo.className = 'resultado-item erro';
+    titulo.textContent = 'Linhas da planilha não identificadas (ignoradas):';
+    resultadosEl.appendChild(titulo);
+    problemas.forEach(function (p) {
+      var div = document.createElement('div');
+      div.className = 'resultado-item erro';
+      div.textContent = p;
+      resultadosEl.appendChild(div);
+    });
+  }
+
+  function processarCsvImportado(texto) {
+    var linhas = texto.split(/\r\n|\n|\r/).filter(function (l) { return l.trim() !== ''; });
+    if (linhas.length < 2) {
+      setMsg('Planilha vazia ou sem linhas de dados.', 'erro');
+      return;
+    }
+
+    var delimitador = linhas[0].indexOf(';') !== -1 ? ';' : ',';
+    var cabecalho = parseCsvLinha(linhas[0], delimitador).map(normalizarTexto);
+    var idxCodigo = cabecalho.indexOf('codigo');
+    var idxProduto = cabecalho.indexOf('produto');
+    var idxEstoque = cabecalho.indexOf('estoque');
+
+    if (idxEstoque === -1 || (idxCodigo === -1 && idxProduto === -1)) {
+      setMsg('A planilha precisa ter as colunas "Produto" e/ou "Codigo", além de "Estoque".', 'erro');
+      return;
+    }
+
+    var porCodigo = {};
+    var porNome = {};
+    dados.produtos.forEach(function (p) {
+      if (p.codigo) {
+        var c = normalizarTexto(p.codigo);
+        (porCodigo[c] = porCodigo[c] || []).push(p);
+      }
+      var n = normalizarTexto(p.title);
+      (porNome[n] = porNome[n] || []).push(p);
+    });
+
+    var encontrados = [];
+    var problemas = [];
+
+    for (var i = 1; i < linhas.length; i++) {
+      var cols = parseCsvLinha(linhas[i], delimitador);
+      var codigo = idxCodigo !== -1 ? normalizarTexto(cols[idxCodigo]) : '';
+      var nome = idxProduto !== -1 ? normalizarTexto(cols[idxProduto]) : '';
+      var estoqueTxt = (cols[idxEstoque] || '').trim();
+      var rotulo = (idxProduto !== -1 && cols[idxProduto]) ? cols[idxProduto] : ((idxCodigo !== -1 && cols[idxCodigo]) ? cols[idxCodigo] : ('linha ' + (i + 1)));
+
+      if (estoqueTxt === '') continue;
+
+      var novoEstoque = Number(estoqueTxt.replace(',', '.'));
+      if (!isFinite(novoEstoque) || novoEstoque < 0) {
+        problemas.push(rotulo + ': valor de estoque inválido ("' + estoqueTxt + '")');
+        continue;
+      }
+
+      var candidatos = null;
+      if (codigo && porCodigo[codigo] && porCodigo[codigo].length === 1) {
+        candidatos = porCodigo[codigo];
+      } else if (nome && porNome[nome] && porNome[nome].length === 1) {
+        candidatos = porNome[nome];
+      }
+
+      if (!candidatos) {
+        var motivo;
+        if (codigo && porCodigo[codigo] && porCodigo[codigo].length > 1) motivo = 'código duplicado no catálogo, corrija manualmente';
+        else if (nome && porNome[nome] && porNome[nome].length > 1) motivo = 'nome duplicado no catálogo, corrija manualmente';
+        else motivo = 'produto não encontrado no catálogo';
+        problemas.push(rotulo + ': ' + motivo);
+        continue;
+      }
+
+      encontrados.push({ produto: candidatos[0], novoEstoque: novoEstoque });
+    }
+
+    if (encontrados.length === 0) {
+      setMsg('Nenhuma linha da planilha pôde ser identificada. Nada foi alterado.', 'erro');
+      mostrarProblemasImportacao(problemas);
+      return;
+    }
+
+    var resumo = 'Foram encontrados ' + encontrados.length + ' produto(s) para atualizar o estoque:\n\n' +
+      encontrados.map(function (e) {
+        return '- ' + e.produto.title + ': ' + (e.produto.estoque || 0) + ' → ' + e.novoEstoque;
+      }).join('\n');
+
+    if (problemas.length) {
+      resumo += '\n\n' + problemas.length + ' linha(s) não identificadas serão ignoradas (detalhes aparecem na tela depois).';
+    }
+
+    resumo += '\n\nIsso só preenche os campos na tela — nada é salvo ainda. Deseja aplicar?';
+
+    if (!window.confirm(resumo)) {
+      setMsg('Importação cancelada.', '');
+      return;
+    }
+
+    encontrados.forEach(function (e) {
+      var input = listaEl.querySelector('.estoque-input[data-path="' + e.produto.path + '"]');
+      if (input) input.value = e.novoEstoque;
+    });
+
+    setMsg(encontrados.length + ' produto(s) atualizados na tela a partir da planilha. Revise e clique em "Salvar alterações".', 'ok');
+    mostrarProblemasImportacao(problemas);
+  }
+
   btnCarregar.addEventListener('click', function () {
     var senha = senhaInput.value;
     if (!senha) {
@@ -342,6 +527,26 @@
         setMsg(err.message, 'erro');
       })
       .finally(function () { btnCarregar.disabled = false; });
+  });
+
+  btnExportarCsv.addEventListener('click', exportarCsv);
+
+  inputImportarCsv.addEventListener('change', function () {
+    var file = inputImportarCsv.files && inputImportarCsv.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        processarCsvImportado(e.target.result);
+      } catch (err) {
+        setMsg('Não foi possível ler essa planilha.', 'erro');
+      }
+    };
+    reader.onerror = function () {
+      setMsg('Não foi possível ler o arquivo.', 'erro');
+    };
+    reader.readAsText(file, 'UTF-8');
+    inputImportarCsv.value = '';
   });
 
   btnSalvar.addEventListener('click', function () {
