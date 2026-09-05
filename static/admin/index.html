@@ -935,7 +935,8 @@
   function restaurarVersao(versao, btn) {
     var confirmado = window.confirm(
       'Restaurar a versão "' + versao.mensagem + '" (' + formatarDataHistorico(versao.data) + ')?\n\n' +
-      'Isso desfaz só essa alteração específica, direto no site. Deseja continuar?'
+      'Isso volta cada arquivo alterado nessa versão para como ele estava antes dela. ' +
+      'Se algum desses arquivos tiver sido alterado de novo depois (por outra versão mais recente), essa alteração mais recente também será desfeita — o painel avisa se isso acontecer. Deseja continuar?'
     );
     if (!confirmado) return;
 
@@ -947,8 +948,12 @@
         resultadosEl.innerHTML = '';
         (data.resultados || []).forEach(function (r) {
           var div = document.createElement('div');
-          div.className = 'resultado-item ' + (r.ok ? 'ok' : 'erro');
-          div.textContent = r.path + ': ' + (r.ok ? (r.acao || 'restaurado') : ('erro — ' + r.error));
+          var classe = r.ok ? (r.alteradoDepois ? 'aviso' : 'ok') : 'erro';
+          div.className = 'resultado-item ' + classe;
+          var texto = r.ok
+            ? (r.acao || 'restaurado') + (r.alteradoDepois ? ' — atenção: havia alteração mais recente nesse item, que também foi desfeita' : '')
+            : ('erro — ' + r.error);
+          div.textContent = r.path + ': ' + texto;
           resultadosEl.appendChild(div);
         });
         return api('/api/list');

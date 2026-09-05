@@ -2,6 +2,8 @@ import {
   BRANCH,
   base64ToUtf8,
   checkPassword,
+  extractField,
+  getFrontMatter,
   githubApi,
   isAllowedPath,
   jsonResponse,
@@ -19,24 +21,48 @@ const CATEGORIA_MIX_TITLE = "Mix";
 
 // A planilha manda produtos com categoria "Mix" quando o valor digitado pela
 // pessoa não corresponde a nenhuma categoria cadastrada (ver processarSincronizacaoCompleta
-// no painel). Garante que essa categoria de fallback exista antes de gravar os produtos.
+// no painel). Garante que essa categoria de fallback exista e esteja ativa
+// antes de gravar os produtos (ela pode ter sido desativada manualmente
+// pelo Pages CMS desde a última vez que foi usada).
 async function garantirCategoriaMix(env) {
   const res = await githubApi(env, `contents/${CATEGORIA_MIX_PATH}?ref=${BRANCH}`);
-  if (res.ok) return;
-  const content = `---\ntitle: ${JSON.stringify(CATEGORIA_MIX_TITLE)}\nativo: true\n---\n`;
-  await githubApi(env, `contents/${CATEGORIA_MIX_PATH}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      message: "Sincronização da planilha: cria categoria Mix",
-      content: utf8ToBase64(content),
-      branch: BRANCH,
-    }),
-  });
+  if (!res.ok) {
+    const content = `---\ntitle: ${JSON.stringify(CATEGORIA_MIX_TITLE)}\nativo: true\n---\n`;
+    await githubApi(env, `contents/${CATEGORIA_MIX_PATH}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        message: "Sincronização da planilha: cria categoria Mix",
+        content: utf8ToBase64(content),
+        branch: BRANCH,
+      }),
+    });
+    return;
+  }
+
+  const fileData = await res.json();
+  const content = base64ToUtf8(fileData.content);
+  const fm = getFrontMatter(content);
+  if (fm !== null && extractField(fm, "ativo") !== "true") {
+    const newContent = setFrontMatterField(content, "ativo", "true");
+    await githubApi(env, `contents/${CATEGORIA_MIX_PATH}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        message: "Sincronização da planilha: reativa categoria Mix",
+        content: utf8ToBase64(newContent),
+        sha: fileData.sha,
+        branch: BRANCH,
+      }),
+    });
+  }
 }
 
+// Aceita tanto "7.50" quanto "7,50" (vírgula decimal é o padrão comum em
+// planilhas editadas no Brasil, inclusive quando o Google Sheets reformata
+// o valor sozinho).
 function validarNumero(valor) {
   if (valor === undefined || valor === null || valor === "") return { ok: true, valor: null };
-  const n = Number(valor);
+  const normalizado = String(valor).trim().replace(",", ".");
+  const n = Number(normalizado);
   if (!isFinite(n) || n < 0) return { ok: false };
   return { ok: true, valor: n };
 }
@@ -57,7 +83,7 @@ async function atualizarProduto(env, item) {
     const original = content;
 
     if (typeof item.title === "string" && item.title.trim()) {
-      content = setFrontMatterField(content, "title", item.title.trim());
+      content = setFrontMatterField(content, "title", JSON.stringify(item.title.trim()));
     }
     for (const campo of CAMPOS_TEXTO) {
       if (typeof item[campo] === "string" && item[campo].trim()) {

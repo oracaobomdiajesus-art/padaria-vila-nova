@@ -47,6 +47,15 @@ export async function onRequestGet(context) {
 // Reverte apenas o efeito do commit escolhido: para cada arquivo de produto/
 // categoria alterado nele, restaura o conteúdo de como estava no commit
 // anterior (ou remove o arquivo, se ele tiver sido criado por esse commit).
+//
+// Isso restaura o arquivo inteiro para o estado de antes do commit, não só
+// a mudança específica dele — então, se o mesmo arquivo tiver sido alterado
+// de novo depois (por outro commit), essa alteração mais recente também
+// seria descartada. `arquivo.sha` é o blob que o commit escolhido deixou
+// gravado; se o blob atual (HEAD) for diferente disso, é sinal de que houve
+// alteração posterior — a restauração segue em frente (mesmo padrão de
+// "faz e avisa" usado no resto do painel), mas o resultado é marcado para
+// o painel exibir um aviso.
 async function restaurarArquivo(env, arquivo, parentSha) {
   const path = arquivo.filename;
   try {
@@ -56,6 +65,7 @@ async function restaurarArquivo(env, arquivo, parentSha) {
         return { path, ok: true, unchanged: true };
       }
       const current = await currentRes.json();
+      const alteradoDepois = Boolean(arquivo.sha && current.sha !== arquivo.sha);
       const delRes = await githubApi(env, `contents/${path}`, {
         method: "DELETE",
         body: JSON.stringify({
@@ -67,7 +77,7 @@ async function restaurarArquivo(env, arquivo, parentSha) {
       if (!delRes.ok) {
         return { path, ok: false, error: `Falha ao remover (status ${delRes.status})` };
       }
-      return { path, ok: true, acao: "removido" };
+      return { path, ok: true, acao: "removido", alteradoDepois };
     }
 
     const [oldRes, currentRes] = await Promise.all([
@@ -80,6 +90,7 @@ async function restaurarArquivo(env, arquivo, parentSha) {
     }
     const old = await oldRes.json();
     const current = currentRes.ok ? await currentRes.json() : null;
+    const alteradoDepois = Boolean(arquivo.sha && current && current.sha !== arquivo.sha);
 
     const putRes = await githubApi(env, `contents/${path}`, {
       method: "PUT",
@@ -93,7 +104,7 @@ async function restaurarArquivo(env, arquivo, parentSha) {
     if (!putRes.ok) {
       return { path, ok: false, error: `Falha ao restaurar (status ${putRes.status})` };
     }
-    return { path, ok: true, acao: "restaurado" };
+    return { path, ok: true, acao: "restaurado", alteradoDepois };
   } catch (err) {
     return { path, ok: false, error: "Erro inesperado ao restaurar este arquivo" };
   }
