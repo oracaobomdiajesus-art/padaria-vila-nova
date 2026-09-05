@@ -21,19 +21,30 @@
     {{ end }}
 
     {{ $hasProducts := false }}
+
+    <div class="catalog-controls">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="search" id="catalogo-busca" placeholder="Buscar produto..." aria-label="Buscar produto">
+      </div>
+      <button type="button" id="btn-abrir-todas" class="btn-toggle-all" data-state="closed">Abrir todas</button>
+    </div>
+
+    <div id="lista-categorias">
     {{ range $activeCats }}
       {{ $catTitle := .Title }}
       {{ $prods := sort (where (where $.Pages "Params.categoria" $catTitle) "Params.ativo" true) "Params.peso" }}
       {{ if $prods }}
         {{ $hasProducts = true }}
-      <section class="categoria-group">
-        <h2>{{ $catTitle }}</h2>
+      <details class="categoria-group">
+        <summary>{{ $catTitle }} <span class="cat-count">({{ len $prods }})</span></summary>
         <div class="product-grid">
           {{ range $prods }}
           {{ $temPrecoPromo := and .Params.em_promocao .Params.preco_promocional }}
           {{ $precoEfetivo := .Params.preco }}
           {{ if $temPrecoPromo }}{{ $precoEfetivo = .Params.preco_promocional }}{{ end }}
-          <div class="product-card">
+          {{ $busca := lower (printf "%s %s %s" .Title (.Params.descricao | default "") (.Params.codigo | default "")) }}
+          <div class="product-card" data-busca="{{ $busca }}">
             <div class="product-photo-wrap">
               {{ with .Params.foto }}<img class="product-photo" src="{{ . | relURL }}" alt="{{ $.Title }}" loading="lazy">{{ end }}
               {{ with .Params.codigo }}<span class="product-code-badge">#{{ . }}</span>{{ end }}
@@ -66,13 +77,15 @@
           </div>
           {{ end }}
         </div>
-      </section>
+      </details>
       {{ end }}
     {{ end }}
+    </div>
 
     {{ if not $hasProducts }}
     <p class="catalog-empty">Nenhum produto disponível no momento.</p>
     {{ end }}
+    <p id="busca-vazio" class="catalog-empty" hidden>Nenhum produto encontrado.</p>
   </main>
 
   {{ $waNumber := replaceRE "[^0-9]" "" (.Site.Home.Params.whatsapp_url | default "") }}
@@ -132,5 +145,6 @@
   </div>
 
   <script src="{{ "js/cart.js" | relURL }}"></script>
+  <script src="{{ "js/catalogo.js" | relURL }}"></script>
 </body>
 </html>
