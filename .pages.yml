@@ -163,9 +163,13 @@ content:
         label: "Tamanhos disponíveis (texto livre, ex: P, M, G)"
         type: "string"
       - name: "categoria"
-        label: "Categoria (precisa ser igual ao nome de uma categoria cadastrada)"
-        type: "string"
+        label: "Categoria"
+        type: "reference"
         required: true
+        options:
+          collection: "categorias"
+          value: "{fields.title}"
+          label: "{fields.title}"
       - name: "estoque"
         label: "Estoque (apenas informativo)"
         type: "number"
