@@ -205,6 +205,7 @@ async function listDir(env, dir) {
       codigo: extractField(fm, "codigo"),
       estoque: extractField(fm, "estoque"),
       estoque_site: extractField(fm, "estoque_site"),
+      foto: extractField(fm, "foto"),
       preco: extractField(fm, "preco"),
       em_promocao: extractField(fm, "em_promocao") === "true",
       preco_promocional: extractField(fm, "preco_promocional"),
@@ -228,9 +229,14 @@ export async function getCatalogo(env) {
 // Índices de coluna (0-indexado) usados tanto para montar as linhas quanto
 // para aplicar os menus suspensos (data validation) nelas.
 const COLUNA_CATEGORIA = 1;
-const COLUNA_EM_PROMOCAO = 5;
-const COLUNA_ATIVO = 8;
-const COLUNA_EXPOSICAO = 9;
+const COLUNA_EM_PROMOCAO = 6;
+const COLUNA_ATIVO = 9;
+const COLUNA_EXPOSICAO = 10;
+
+// URL pública do site — usada pra montar o link de cada foto na coluna
+// "Imagem" da planilha (função =IMAGE do próprio Google Sheets, sem
+// precisar de nenhum script).
+const SITE_BASE_URL = "https://padaria-vila-nova.pages.dev";
 
 // A lista de categorias existentes mora numa aba separada (não misturada
 // com os produtos), criada e mantida automaticamente. Linha 1 é um título;
@@ -249,6 +255,7 @@ export function montarLinhasPlanilha(produtos, categorias) {
     "Caminho (não editar)",
     "Categoria",
     "Produto",
+    "Imagem",
     "Codigo",
     "Preco",
     "EmPromocao",
@@ -269,10 +276,17 @@ export function montarLinhasPlanilha(produtos, categorias) {
 
   const produtosOrdenados = produtos.slice().sort((a, b) => a.title.localeCompare(b.title));
   produtosOrdenados.forEach((p) => {
+    // =IMAGE já é nativo do Google Sheets — não precisa de nenhum script.
+    // Se a pessoa não quiser ver as fotos, ela mesma pode ocultar a coluna
+    // "Imagem" direto na planilha (botão direito → Ocultar coluna); como a
+    // sincronização só reescreve valores de célula, a coluna continua
+    // oculta nas próximas vezes.
+    const imagemFormula = p.foto ? `=IMAGE("${SITE_BASE_URL}${p.foto}", 4, 50, 50)` : "";
     linhas.push([
       p.path,
       p.categoria || "",
       p.title,
+      imagemFormula,
       p.codigo || "",
       p.preco || "",
       p.em_promocao ? "Sim" : "Nao",
@@ -463,7 +477,10 @@ export async function exportarCatalogoParaSheet(env) {
     return { ok: false, error: `Não foi possível limpar a planilha (status ${clearRes.status})` };
   }
 
-  const updateRes = await fetch(`${sheetsUrl}/A1?valueInputOption=RAW`, {
+  // USER_ENTERED (em vez de RAW) faz a célula "=IMAGE(...)" da coluna
+  // Imagem virar uma fórmula de verdade, do mesmo jeito que aconteceria se
+  // alguém digitasse na planilha — com RAW ficaria como texto puro.
+  const updateRes = await fetch(`${sheetsUrl}/A1?valueInputOption=USER_ENTERED`, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${accessToken}`,
