@@ -3,18 +3,42 @@ media:
   output: "/img"
 
 content:
-  - name: "atalhos"
-    label: "🔗 Atalhos"
+  - name: "atalho-estoque"
+    label: "🧑‍🍳 Atalho: Painel de Estoque"
     type: "file"
-    path: "content/atalhos.md"
+    path: "content/atalho-estoque.md"
     format: "yaml-frontmatter"
     fields:
-      - name: "titulo"
+      - name: "body"
+        label: "Endereço (copie e cole no navegador)"
+        type: "text"
+      - name: "_build"
         label: false
         hidden: true
-        type: "string"
+        type: "object"
+        default:
+          render: "never"
+          list: "never"
+        fields:
+          - name: "render"
+            label: false
+            type: "string"
+            default: "never"
+            hidden: true
+          - name: "list"
+            label: false
+            type: "string"
+            default: "never"
+            hidden: true
+
+  - name: "atalho-analytics"
+    label: "📊 Atalho: Estatísticas do Site"
+    type: "file"
+    path: "content/atalho-analytics.md"
+    format: "yaml-frontmatter"
+    fields:
       - name: "body"
-        label: "Links úteis (copie o endereço e cole no navegador)"
+        label: "Endereço (copie e cole no navegador)"
         type: "text"
       - name: "_build"
         label: false
