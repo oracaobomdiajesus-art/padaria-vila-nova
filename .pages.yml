@@ -3,6 +3,38 @@ media:
   output: "/img"
 
 content:
+  - name: "atalhos"
+    label: "🔗 Atalhos"
+    type: "file"
+    path: "content/atalhos.md"
+    format: "yaml-frontmatter"
+    fields:
+      - name: "titulo"
+        label: false
+        hidden: true
+        type: "string"
+      - name: "body"
+        label: "Links úteis"
+        type: "rich-text"
+      - name: "_build"
+        label: false
+        hidden: true
+        type: "object"
+        default:
+          render: "never"
+          list: "never"
+        fields:
+          - name: "render"
+            label: false
+            type: "string"
+            default: "never"
+            hidden: true
+          - name: "list"
+            label: false
+            type: "string"
+            default: "never"
+            hidden: true
+
   - name: "profile"
     label: "Perfil"
     type: "file"
