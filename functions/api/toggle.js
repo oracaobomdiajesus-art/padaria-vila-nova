@@ -5,28 +5,18 @@ import {
   githubApi,
   isAllowedPath,
   jsonResponse,
+  setFrontMatterField,
   utf8ToBase64,
 } from "../../functions-lib/admin-shared.js";
 
 const MAX_ITEMS = 100;
 
-// Rebuilds the file by slicing around the matched front matter block instead
-// of using String.replace(original, ...) on the whole file: the replacement
-// argument there would interpret "$&", "$1", etc. if the untouched body
-// (e.g. a product description with "R$ 5,00") happened to contain them.
-function setAtivoField(content, ativo) {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!match) {
-    throw new Error("Front matter não encontrado");
-  }
-  const frontMatter = match[1];
-  const value = ativo ? "true" : "false";
-  const newFrontMatter = /^ativo\s*:.*$/m.test(frontMatter)
-    ? frontMatter.replace(/^ativo\s*:.*$/m, `ativo: ${value}`)
-    : `${frontMatter}\nativo: ${value}`;
-
-  const newBlock = `---\n${newFrontMatter}\n---`;
-  return content.slice(0, match.index) + newBlock + content.slice(match.index + match[0].length);
+function parseEstoque(path, estoqueRaw) {
+  if (!path.startsWith("content/produtos/")) return { estoque: null };
+  if (estoqueRaw === undefined || estoqueRaw === null || estoqueRaw === "") return { estoque: null };
+  const n = Number(estoqueRaw);
+  if (!Number.isInteger(n) || n < 0) return { error: "Valor de 'estoque' inválido" };
+  return { estoque: n };
 }
 
 async function toggleOne(env, item) {
@@ -40,6 +30,11 @@ async function toggleOne(env, item) {
     return { path, ok: false, error: "Valor de 'ativo' inválido" };
   }
 
+  const { estoque, error: estoqueError } = parseEstoque(path, item && item.estoque);
+  if (estoqueError) {
+    return { path, ok: false, error: estoqueError };
+  }
+
   try {
     const getRes = await githubApi(env, `contents/${path}?ref=${BRANCH}`);
     if (!getRes.ok) {
@@ -47,7 +42,11 @@ async function toggleOne(env, item) {
     }
     const fileData = await getRes.json();
     const currentContent = base64ToUtf8(fileData.content);
-    const newContent = setAtivoField(currentContent, ativo);
+
+    let newContent = setFrontMatterField(currentContent, "ativo", ativo ? "true" : "false");
+    if (estoque !== null) {
+      newContent = setFrontMatterField(newContent, "estoque", String(estoque));
+    }
 
     if (newContent === currentContent) {
       return { path, ok: true, unchanged: true };
@@ -56,7 +55,7 @@ async function toggleOne(env, item) {
     const putRes = await githubApi(env, `contents/${path}`, {
       method: "PUT",
       body: JSON.stringify({
-        message: `Painel admin: define ativo=${ativo} em ${path}`,
+        message: `Painel admin: atualiza ${path}`,
         content: utf8ToBase64(newContent),
         sha: fileData.sha,
         branch: BRANCH,

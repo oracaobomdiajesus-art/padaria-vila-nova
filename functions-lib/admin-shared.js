@@ -75,3 +75,22 @@ export function getFrontMatter(content) {
   const m = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   return m ? m[1] : null;
 }
+
+// Rebuilds the file by slicing around the matched front matter block instead
+// of using String.replace(wholeFile, ...): the replacement argument there
+// would interpret "$&", "$1", etc. if the untouched body (e.g. a product
+// description with "R$ 5,00") happened to contain them.
+export function setFrontMatterField(content, field, value) {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!match) {
+    throw new Error("Front matter não encontrado");
+  }
+  const frontMatter = match[1];
+  const fieldRegex = new RegExp(`^${field}\\s*:.*$`, "m");
+  const newFrontMatter = fieldRegex.test(frontMatter)
+    ? frontMatter.replace(fieldRegex, `${field}: ${value}`)
+    : `${frontMatter}\n${field}: ${value}`;
+
+  const newBlock = `---\n${newFrontMatter}\n---`;
+  return content.slice(0, match.index) + newBlock + content.slice(match.index + match[0].length);
+}
