@@ -67,7 +67,7 @@
     background: var(--primary);
     color: #fff;
   }
-  .btn-primary:disabled {
+  button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
@@ -186,9 +186,10 @@
     </div>
     <div class="csv-actions">
       <button type="button" class="btn-secondary" id="btn-exportar-csv">Exportar planilha (CSV)</button>
-      <label class="btn-secondary" for="input-importar-csv">Importar planilha (CSV)</label>
+      <label class="btn-secondary" for="input-importar-csv">Importar arquivo (CSV)</label>
       <input type="file" id="input-importar-csv" accept=".csv,text/csv">
-      <p class="hint">A planilha exportada abre no Google Sheets ou Excel. Edite só a coluna "Estoque" e importe de volta — as outras colunas são só referência e não são alteradas.</p>
+      <button type="button" class="btn-secondary" id="btn-importar-sheets">Importar do Google Sheets</button>
+      <p class="hint">A planilha exportada abre no Google Sheets ou Excel. Edite só a coluna "Estoque". Se a planilha estiver publicada no Google Sheets, use "Importar do Google Sheets" pra buscar direto, sem precisar baixar/subir arquivo. As outras colunas são só referência e não são alteradas.</p>
     </div>
     <div id="resultados"></div>
   </div>
@@ -203,6 +204,7 @@
   var btnSalvar = document.getElementById('btn-salvar');
   var btnExportarCsv = document.getElementById('btn-exportar-csv');
   var inputImportarCsv = document.getElementById('input-importar-csv');
+  var btnImportarSheets = document.getElementById('btn-importar-sheets');
   var msgEl = document.getElementById('msg');
   var conteudoEl = document.getElementById('conteudo');
   var listaEl = document.getElementById('lista');
@@ -553,6 +555,19 @@
   });
 
   btnExportarCsv.addEventListener('click', exportarCsv);
+
+  btnImportarSheets.addEventListener('click', function () {
+    btnImportarSheets.disabled = true;
+    setMsg('Buscando planilha...', '');
+    api('/api/planilha')
+      .then(function (data) {
+        processarCsvImportado(data.csv);
+      })
+      .catch(function (err) {
+        setMsg(err.message, 'erro');
+      })
+      .finally(function () { btnImportarSheets.disabled = false; });
+  });
 
   inputImportarCsv.addEventListener('change', function () {
     var file = inputImportarCsv.files && inputImportarCsv.files[0];
