@@ -94,10 +94,22 @@
   }
   .produto-row {
     display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 7px 0 7px 24px;
+    font-size: 0.92rem;
+  }
+  .produto-real-details + .produto-row { border-top: 1px solid #f2ede2; }
+  .produto-linha1 {
+    display: flex;
     align-items: center;
     gap: 10px;
-    padding: 6px 0 6px 24px;
-    font-size: 0.92rem;
+  }
+  .produto-linha2 {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
   }
   .status {
     font-size: 0.75rem;
@@ -108,44 +120,29 @@
   .status.ativo { background: #DFF5E1; color: var(--ok); }
   .status.inativo { background: #FBE0E0; color: var(--err); }
   .produto-label { flex: 1; font-weight: 400; }
-  .estoque-wrap {
-    display: flex;
+  .promo-pill, .vitrine-pill {
+    display: inline-flex;
     align-items: center;
     gap: 4px;
+    background: #F3EDE1;
+    border-radius: 999px;
+    padding: 3px 10px 3px 8px;
     font-size: 0.78rem;
-    opacity: 0.85;
+    cursor: default;
   }
-  .estoque-site-input {
-    width: 52px;
-    padding: 3px 6px;
+  .promo-pill { cursor: pointer; }
+  .promo-pill input[type="checkbox"] { margin: 0; }
+  .estoque-site-input, .preco-promo-input {
+    width: 46px;
+    padding: 2px 4px;
     border: 1px solid #ddd;
     border-radius: 6px;
     font-size: 0.85rem;
+    background: #fff;
   }
-  .preco-wrap {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.78rem;
-    opacity: 0.85;
-  }
-  .preco-promo-input {
-    width: 64px;
-    padding: 3px 6px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 0.85rem;
-  }
-  .promo-wrap {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.78rem;
-    opacity: 0.85;
-    cursor: pointer;
-  }
+  .preco-promo-input { width: 54px; }
   .produto-real-details {
-    margin: -4px 0 6px 48px;
+    margin: -2px 0 2px 24px;
     font-size: 0.76rem;
     opacity: 0.7;
   }
@@ -326,6 +323,9 @@
         var row = document.createElement('div');
         row.className = 'produto-row';
 
+        var linha1 = document.createElement('div');
+        linha1.className = 'produto-linha1';
+
         var checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = !!prod.ativo;
@@ -344,24 +344,25 @@
         if (prod.codigo) labelText += ' — #' + prod.codigo;
         label.textContent = labelText;
 
-        var estoqueSiteWrap = document.createElement('span');
-        estoqueSiteWrap.className = 'estoque-wrap';
-        var estoqueSiteLabel = document.createElement('span');
-        estoqueSiteLabel.textContent = 'Estoque site:';
-        var estoqueSiteInput = document.createElement('input');
-        estoqueSiteInput.type = 'number';
-        estoqueSiteInput.min = '0';
-        estoqueSiteInput.step = '1';
-        estoqueSiteInput.className = 'estoque-site-input';
-        estoqueSiteInput.dataset.path = prod.path;
-        estoqueSiteInput.value = prod.estoque_site || '';
-        estoqueSiteWrap.appendChild(estoqueSiteLabel);
-        estoqueSiteWrap.appendChild(estoqueSiteInput);
+        linha1.appendChild(checkbox);
+        linha1.appendChild(label);
+        linha1.appendChild(status);
 
-        var precoPromoWrap = document.createElement('span');
-        precoPromoWrap.className = 'preco-wrap';
-        var precoPromoLabel = document.createElement('span');
-        precoPromoLabel.textContent = 'Preço promo: R$';
+        var linha2 = document.createElement('div');
+        linha2.className = 'produto-linha2';
+
+        // Promoção e preço promocional ficam juntos no mesmo "chip" — são
+        // dois lados da mesma decisão (só faz sentido digitar o preço se
+        // for ligar a promoção), então economiza texto ter os dois juntos.
+        var promoPill = document.createElement('label');
+        promoPill.className = 'promo-pill';
+        var promoCheckbox = document.createElement('input');
+        promoCheckbox.type = 'checkbox';
+        promoCheckbox.checked = !!prod.em_promocao;
+        promoCheckbox.className = 'promo-checkbox';
+        promoCheckbox.dataset.path = prod.path;
+        var promoTexto = document.createElement('span');
+        promoTexto.textContent = 'Promo R$';
         var precoPromoInput = document.createElement('input');
         precoPromoInput.type = 'number';
         precoPromoInput.min = '0';
@@ -369,25 +370,29 @@
         precoPromoInput.className = 'preco-promo-input';
         precoPromoInput.dataset.path = prod.path;
         precoPromoInput.value = prod.preco_promocional || '';
-        precoPromoWrap.appendChild(precoPromoLabel);
-        precoPromoWrap.appendChild(precoPromoInput);
+        promoPill.appendChild(promoCheckbox);
+        promoPill.appendChild(promoTexto);
+        promoPill.appendChild(precoPromoInput);
 
-        var promoWrap = document.createElement('label');
-        promoWrap.className = 'promo-wrap';
-        var promoCheckbox = document.createElement('input');
-        promoCheckbox.type = 'checkbox';
-        promoCheckbox.checked = !!prod.em_promocao;
-        promoCheckbox.className = 'promo-checkbox';
-        promoCheckbox.dataset.path = prod.path;
-        promoWrap.appendChild(promoCheckbox);
-        promoWrap.appendChild(document.createTextNode(' Promoção'));
+        var vitrinePill = document.createElement('span');
+        vitrinePill.className = 'vitrine-pill';
+        var vitrineTexto = document.createElement('span');
+        vitrineTexto.textContent = 'Vitrine';
+        var estoqueSiteInput = document.createElement('input');
+        estoqueSiteInput.type = 'number';
+        estoqueSiteInput.min = '0';
+        estoqueSiteInput.step = '1';
+        estoqueSiteInput.className = 'estoque-site-input';
+        estoqueSiteInput.dataset.path = prod.path;
+        estoqueSiteInput.value = prod.estoque_site || '';
+        vitrinePill.appendChild(vitrineTexto);
+        vitrinePill.appendChild(estoqueSiteInput);
 
-        row.appendChild(checkbox);
-        row.appendChild(label);
-        row.appendChild(precoPromoWrap);
-        row.appendChild(estoqueSiteWrap);
-        row.appendChild(promoWrap);
-        row.appendChild(status);
+        linha2.appendChild(promoPill);
+        linha2.appendChild(vitrinePill);
+
+        row.appendChild(linha1);
+        row.appendChild(linha2);
         block.appendChild(row);
 
         // Preço cheio e estoque real são só consulta aqui — quem edita eles
@@ -396,7 +401,7 @@
         var realDetails = document.createElement('details');
         realDetails.className = 'produto-real-details';
         var realSummary = document.createElement('summary');
-        realSummary.textContent = 'Ver dados reais (preço cheio e estoque)';
+        realSummary.textContent = 'Dados reais';
         var realInfo = document.createElement('span');
         realInfo.className = 'produto-real-info';
         var precoRealTexto = prod.preco !== null && prod.preco !== undefined && prod.preco !== ''
@@ -405,7 +410,7 @@
         var estoqueRealTexto = prod.estoque !== null && prod.estoque !== undefined && prod.estoque !== ''
           ? prod.estoque
           : '—';
-        realInfo.textContent = 'Preço cheio: ' + precoRealTexto + '  ·  Estoque real: ' + estoqueRealTexto;
+        realInfo.textContent = precoRealTexto + '  ·  Est. ' + estoqueRealTexto;
         realDetails.appendChild(realSummary);
         realDetails.appendChild(realInfo);
         block.appendChild(realDetails);
