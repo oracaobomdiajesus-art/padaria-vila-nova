@@ -131,6 +131,7 @@
   }
   .resultado-item.ok { background: #DFF5E1; color: var(--ok); }
   .resultado-item.erro { background: #FBE0E0; color: var(--err); }
+  .resultado-item.aviso { background: #FFF3CD; color: #8A6D1D; }
   #msg { font-size: 0.85rem; margin-top: 8px; min-height: 1.2em; }
   #msg.erro { color: var(--err); }
   #msg.ok { color: var(--ok); }
@@ -206,7 +207,7 @@
       <input type="file" id="input-importar-csv" accept=".csv,text/csv">
       <button type="button" class="btn-secondary" id="btn-exportar-sheets">Exportar para o Google Sheets</button>
       <button type="button" class="btn-secondary" id="btn-importar-sheets">Importar do Google Sheets</button>
-      <p class="hint">A planilha agora traz uma coluna "Caminho" (não edite essa) que identifica cada produto — com ela, importar passa a atualizar qualquer campo (nome, categoria, preço...), criar produtos novos (linha sem caminho) e desativar os que sumirem da planilha. "Exportar para o Google Sheets" grava direto na planilha; "Exportar planilha (CSV)" baixa um arquivo.</p>
+      <p class="hint">A planilha agora traz uma coluna "Caminho" (não edite essa) que identifica cada produto — com ela, importar passa a atualizar qualquer campo (nome, categoria, preço...), criar produtos novos (linha sem caminho) e desativar os que sumirem da planilha. No fim da planilha aparece a lista das categorias existentes, como referência — se a categoria digitada não bater com nenhuma delas, o produto vai automaticamente para uma categoria "Mix". "Exportar para o Google Sheets" grava direto na planilha; "Exportar planilha (CSV)" baixa um arquivo.</p>
     </div>
     <div id="resultados"></div>
   </div>
@@ -418,6 +419,15 @@
   }
 
   var CABECALHO_PLANILHA = ['Caminho (não editar)', 'Categoria', 'Produto', 'Codigo', 'Preco', 'EmPromocao', 'PrecoPromocional', 'Estoque', 'Ativo', 'Exposicao'];
+  var MARCADOR_CATEGORIAS = '#CATEGORIAS_DISPONIVEIS';
+  var CATEGORIA_MIX = 'Mix';
+
+  function categoriasAtivasOrdenadas() {
+    return dados.categorias
+      .filter(function (c) { return c.ativo; })
+      .map(function (c) { return c.title; })
+      .sort(function (a, b) { return a.localeCompare(b); });
+  }
 
   function montarLinhasProdutos() {
     var linhas = [CABECALHO_PLANILHA];
@@ -437,6 +447,16 @@
           p.exposicao ? 'Sim' : 'Nao'
         ]);
       });
+
+    // Lista as categorias existentes como referência visual (a pessoa não
+    // precisa adivinhar o nome certo). Tudo a partir do marcador é ignorado
+    // na importação — ver corte em processarCsvImportado.
+    linhas.push([MARCADOR_CATEGORIAS, 'Categorias existentes — use exatamente um destes nomes na coluna Categoria:', '', '', '', '', '', '', '', '']);
+    categoriasAtivasOrdenadas().forEach(function (nomeCat) {
+      linhas.push(['', nomeCat, '', '', '', '', '', '', '', '']);
+    });
+    linhas.push(['', 'Categoria não reconhecida vira automaticamente "' + CATEGORIA_MIX + '" ao importar.', '', '', '', '', '', '', '', '']);
+
     return linhas;
   }
 
@@ -471,6 +491,20 @@
     });
   }
 
+  function mostrarAvisos(avisos) {
+    if (!avisos.length) return;
+    var titulo = document.createElement('div');
+    titulo.className = 'resultado-item aviso';
+    titulo.textContent = 'Categorias ajustadas automaticamente:';
+    resultadosEl.appendChild(titulo);
+    avisos.forEach(function (a) {
+      var div = document.createElement('div');
+      div.className = 'resultado-item aviso';
+      div.textContent = a;
+      resultadosEl.appendChild(div);
+    });
+  }
+
   function parseBooleanPlanilha(valor) {
     var v = normalizarTexto(valor);
     if (!v) return false;
@@ -487,6 +521,12 @@
 
   function processarCsvImportado(texto) {
     var linhas = texto.split(/\r\n|\n|\r/).filter(function (l) { return l.trim() !== ''; });
+    var marcadorIdx = -1;
+    for (var m = 0; m < linhas.length; m++) {
+      if (linhas[m].indexOf(MARCADOR_CATEGORIAS) === 0) { marcadorIdx = m; break; }
+    }
+    if (marcadorIdx !== -1) linhas = linhas.slice(0, marcadorIdx);
+
     if (linhas.length < 2) {
       setMsg('Planilha vazia ou sem linhas de dados.', 'erro');
       return;
@@ -620,9 +660,15 @@
     var porPath = {};
     dados.produtos.forEach(function (p) { porPath[p.path] = p; });
 
+    var categoriasValidas = {};
+    categoriasAtivasOrdenadas().forEach(function (titulo) {
+      categoriasValidas[normalizarTexto(titulo)] = titulo;
+    });
+
     var atualizacoes = [];
     var criacoes = [];
     var problemas = [];
+    var categoriasAjustadas = [];
     var caminhosNaPlanilha = {};
 
     for (var i = 1; i < linhas.length; i++) {
@@ -633,6 +679,16 @@
       var rotulo = nome || ('linha ' + (i + 1));
 
       if (!nome && !categoria && cols.every(function (c) { return !c || !c.trim(); })) continue; // linha em branco
+
+      if (categoria) {
+        var categoriaNormalizada = normalizarTexto(categoria);
+        if (categoriasValidas[categoriaNormalizada]) {
+          categoria = categoriasValidas[categoriaNormalizada]; // usa o nome oficial (corrige acento/maiúscula)
+        } else if (categoriaNormalizada !== normalizarTexto(CATEGORIA_MIX)) {
+          categoriasAjustadas.push(rotulo + ': categoria "' + categoria + '" não existe — foi para "' + CATEGORIA_MIX + '"');
+          categoria = CATEGORIA_MIX;
+        }
+      }
 
       var item = {
         title: nome,
@@ -670,6 +726,7 @@
     if (atualizacoes.length === 0 && criacoes.length === 0 && desativacoes.length === 0) {
       setMsg('Nada para sincronizar — a planilha já corresponde ao catálogo atual.', '');
       resultadosEl.innerHTML = '';
+      mostrarAvisos(categoriasAjustadas);
       mostrarProblemasImportacao(problemas);
       return;
     }
@@ -683,6 +740,9 @@
         var p = porPath[path];
         return '- ' + (p ? p.title : path);
       }).join('\n') + '\n';
+    }
+    if (categoriasAjustadas.length) {
+      resumo += '\n' + categoriasAjustadas.length + ' produto(s) com categoria não reconhecida vão para "' + CATEGORIA_MIX + '":\n' + categoriasAjustadas.join('\n') + '\n';
     }
     if (problemas.length) {
       resumo += '\n' + problemas.length + ' linha(s) com problema serão ignoradas (detalhes aparecem na tela depois).\n';
@@ -711,6 +771,7 @@
           div.textContent = r.path + ': ' + texto;
           resultadosEl.appendChild(div);
         });
+        mostrarAvisos(categoriasAjustadas);
         mostrarProblemasImportacao(problemas);
         return api('/api/list');
       })

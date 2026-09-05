@@ -14,6 +14,25 @@ const MAX_ITEMS = 200;
 const CAMPOS_TEXTO = ["categoria", "codigo"];
 const CAMPOS_NUMERO = ["preco", "estoque", "preco_promocional"];
 const CAMPOS_BOOLEANO = ["em_promocao", "ativo", "exposicao"];
+const CATEGORIA_MIX_PATH = "content/categorias/mix.md";
+const CATEGORIA_MIX_TITLE = "Mix";
+
+// A planilha manda produtos com categoria "Mix" quando o valor digitado pela
+// pessoa não corresponde a nenhuma categoria cadastrada (ver processarSincronizacaoCompleta
+// no painel). Garante que essa categoria de fallback exista antes de gravar os produtos.
+async function garantirCategoriaMix(env) {
+  const res = await githubApi(env, `contents/${CATEGORIA_MIX_PATH}?ref=${BRANCH}`);
+  if (res.ok) return;
+  const content = `---\ntitle: ${JSON.stringify(CATEGORIA_MIX_TITLE)}\nativo: true\n---\n`;
+  await githubApi(env, `contents/${CATEGORIA_MIX_PATH}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      message: "Sincronização da planilha: cria categoria Mix",
+      content: utf8ToBase64(content),
+      branch: BRANCH,
+    }),
+  });
+}
 
 function validarNumero(valor) {
   if (valor === undefined || valor === null || valor === "") return { ok: true, valor: null };
@@ -221,6 +240,13 @@ export async function onRequestPost(context) {
   }
   if (total > MAX_ITEMS) {
     return jsonResponse({ error: "Muitas alterações em uma única sincronização" }, 400);
+  }
+
+  const usaCategoriaMix = atualizacoes
+    .concat(criacoes)
+    .some((item) => item && item.categoria === CATEGORIA_MIX_TITLE);
+  if (usaCategoriaMix) {
+    await garantirCategoriaMix(env);
   }
 
   const resultados = [];
