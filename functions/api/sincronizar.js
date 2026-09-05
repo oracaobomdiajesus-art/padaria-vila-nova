@@ -1,5 +1,7 @@
 import {
   BRANCH,
+  CATEGORIA_MIX_PATH,
+  CATEGORIA_MIX_TITLE,
   base64ToUtf8,
   checkPassword,
   extractField,
@@ -16,8 +18,6 @@ const MAX_ITEMS = 200;
 const CAMPOS_TEXTO = ["categoria", "codigo"];
 const CAMPOS_NUMERO = ["preco", "estoque", "preco_promocional"];
 const CAMPOS_BOOLEANO = ["em_promocao", "ativo", "exposicao"];
-const CATEGORIA_MIX_PATH = "content/categorias/mix.md";
-const CATEGORIA_MIX_TITLE = "Mix";
 
 // A planilha manda produtos com categoria "Mix" quando o valor digitado pela
 // pessoa não corresponde a nenhuma categoria cadastrada (ver processarSincronizacaoCompleta

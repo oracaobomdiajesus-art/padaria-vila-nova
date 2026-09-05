@@ -207,7 +207,7 @@
       <input type="file" id="input-importar-csv" accept=".csv,text/csv">
       <button type="button" class="btn-secondary" id="btn-exportar-sheets">Exportar para o Google Sheets</button>
       <button type="button" class="btn-secondary" id="btn-importar-sheets">Importar do Google Sheets</button>
-      <p class="hint">A planilha agora traz uma coluna "Caminho" (não edite essa) que identifica cada produto — com ela, importar passa a atualizar qualquer campo (nome, categoria, preço...), criar produtos novos (linha sem caminho) e desativar os que sumirem da planilha. No fim da planilha aparece a lista das categorias existentes, como referência — se a categoria digitada não bater com nenhuma delas, o produto vai automaticamente para uma categoria "Mix". "Exportar para o Google Sheets" grava direto na planilha; "Exportar planilha (CSV)" baixa um arquivo.</p>
+      <p class="hint">A planilha agora traz uma coluna "Caminho" (não edite essa) que identifica cada produto — com ela, importar passa a atualizar qualquer campo (nome, categoria, preço...), criar produtos novos (linha sem caminho) e desativar os que sumirem da planilha. No fim da planilha aparece a lista das categorias existentes, como referência — se a categoria digitada não bater com nenhuma delas, o produto vai automaticamente para uma categoria "Mix". A planilha do Google Sheets agora se atualiza sozinha sempre que algo muda no site (Pages CMS ou este painel) — use "Exportar para o Google Sheets" só se quiser forçar uma atualização imediata. "Exportar planilha (CSV)" baixa um arquivo.</p>
     </div>
     <div id="resultados"></div>
   </div>
@@ -216,7 +216,7 @@
     <div class="row-actions" style="margin-top:0;">
       <button type="button" class="btn-secondary" id="btn-historico">Ver histórico de versões</button>
     </div>
-    <p class="hint">Cada alteração salva no site vira uma versão. Restaurar uma versão desfaz só aquela alteração específica.</p>
+    <p class="hint">Cada alteração salva no site vira uma versão. Restaurar volta os arquivos daquela versão para como estavam antes dela — se algum tiver sido alterado de novo depois, essa alteração mais recente também é desfeita (o painel avisa quando isso acontece).</p>
     <div id="lista-historico"></div>
   </div>
 
@@ -814,7 +814,7 @@
   btnExportarSheets.addEventListener('click', function () {
     btnExportarSheets.disabled = true;
     setMsg('Gravando na planilha do Google Sheets...', '');
-    api('/api/planilha', { method: 'POST', body: JSON.stringify({ linhas: montarLinhasProdutos() }) })
+    api('/api/planilha', { method: 'POST' })
       .then(function () {
         setMsg('Planilha do Google Sheets atualizada com sucesso.', 'ok');
       })
@@ -824,16 +824,51 @@
       .finally(function () { btnExportarSheets.disabled = false; });
   });
 
+  // A planilha já se atualiza sozinha (via webhook) sempre que algo muda no
+  // GitHub, então esse aviso só pega o caso raro de alguém estar editando
+  // bem naquele momento — não é uma trava, só um "confere antes de aplicar".
+  var JANELA_ATIVIDADE_RECENTE_MS = 3 * 60 * 1000;
+
+  function avisarSeAtividadeRecente() {
+    return api('/api/historico')
+      .then(function (data) {
+        var ultima = data.historico && data.historico[0];
+        if (!ultima) return true;
+        var minutosAtras = (Date.now() - new Date(ultima.data).getTime()) / 60000;
+        if (minutosAtras >= 0 && minutosAtras * 60000 < JANELA_ATIVIDADE_RECENTE_MS) {
+          return window.confirm(
+            'O catálogo foi alterado há pouco tempo (' + formatarDataHistorico(ultima.data) + ', "' + ultima.mensagem + '").\n\n' +
+            'Se outra pessoa estiver editando agora (pelo Pages CMS ou pela planilha), importar por cima pode desfazer o que ela está fazendo.\n\n' +
+            'Deseja continuar mesmo assim?'
+          );
+        }
+        return true;
+      })
+      .catch(function () {
+        // Se não der pra checar o histórico, não bloqueia a importação por isso.
+        return true;
+      });
+  }
+
   // Antes de comparar a planilha com o catálogo (pra saber o que mudou,
   // criar ou desativar), busca o catálogo atual de novo: se algo tiver sido
   // alterado direto pelo Pages CMS desde a última vez que a tela foi
   // carregada, essa mudança recente precisa entrar na comparação — senão o
-  // painel decidiria com base em dados desatualizados.
+  // painel decidiria com base em dados desatualizados. Também avisa se essa
+  // alteração foi bem recente, sinal de que outra pessoa pode estar
+  // editando agora.
   function atualizarCatalogoAntesDeImportar() {
-    setMsg('Atualizando catálogo...', '');
-    return api('/api/list').then(function (dadosAtuais) {
-      dados = dadosAtuais;
-      render();
+    setMsg('Verificando atividade recente...', '');
+    return avisarSeAtividadeRecente().then(function (continuar) {
+      if (!continuar) {
+        setMsg('Importação cancelada.', '');
+        return Promise.reject(new Error('__cancelado__'));
+      }
+      setMsg('Atualizando catálogo...', '');
+      return api('/api/list').then(function (dadosAtuais) {
+        dados = dadosAtuais;
+        render();
+      });
     });
   }
 
@@ -848,7 +883,7 @@
         processarCsvImportado(data.csv);
       })
       .catch(function (err) {
-        setMsg(err.message, 'erro');
+        if (err.message !== '__cancelado__') setMsg(err.message, 'erro');
       })
       .finally(function () { btnImportarSheets.disabled = false; });
   });
@@ -870,7 +905,7 @@
         processarCsvImportado(texto);
       })
       .catch(function (err) {
-        setMsg(err.message, 'erro');
+        if (err.message !== '__cancelado__') setMsg(err.message, 'erro');
       })
       .finally(function () {
         inputImportarCsv.disabled = false;
