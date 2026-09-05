@@ -122,6 +122,28 @@
     border-radius: 6px;
     font-size: 0.85rem;
   }
+  .preco-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.78rem;
+    opacity: 0.85;
+  }
+  .preco-input {
+    width: 64px;
+    padding: 3px 6px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.85rem;
+  }
+  .promo-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.78rem;
+    opacity: 0.85;
+    cursor: pointer;
+  }
   #resultados { margin-top: 16px; }
   .resultado-item {
     font-size: 0.85rem;
@@ -202,12 +224,9 @@
       <button class="btn-primary" id="btn-salvar">Salvar alterações</button>
     </div>
     <div class="csv-actions">
-      <button type="button" class="btn-secondary" id="btn-exportar-csv">Exportar planilha (CSV)</button>
-      <label class="btn-secondary" for="input-importar-csv">Importar arquivo (CSV)</label>
-      <input type="file" id="input-importar-csv" accept=".csv,text/csv">
       <button type="button" class="btn-secondary" id="btn-exportar-sheets">Exportar para o Google Sheets</button>
       <button type="button" class="btn-secondary" id="btn-importar-sheets">Importar do Google Sheets</button>
-      <p class="hint">A planilha traz uma coluna "Caminho" (não edite essa) que identifica cada produto — com ela, importar passa a atualizar qualquer campo (nome, categoria, preço...), criar produtos novos (linha sem caminho) e desativar os que sumirem da planilha. Se a categoria digitada não bater com nenhuma categoria existente, o produto vai automaticamente para uma categoria "Mix". No Google Sheets, a coluna Categoria tem um menu suspenso com as categorias existentes (a lista completa fica numa aba separada chamada "Categorias", só como referência — não precisa editar lá); Ativo, EmPromocao e Exposicao também têm menu com Sim/Não. A planilha do Google Sheets se atualiza sozinha sempre que algo muda no site (Pages CMS ou este painel) — use "Exportar para o Google Sheets" só se quiser forçar uma atualização imediata. "Exportar planilha (CSV)" baixa um arquivo (esse mantém a lista de categorias no fim do próprio arquivo, já que um CSV não tem abas).</p>
+      <p class="hint">A planilha traz uma coluna "Caminho" (não edite essa) que identifica cada produto — com ela, importar passa a atualizar qualquer campo (nome, categoria, preço...), criar produtos novos (linha sem caminho) e desativar os que sumirem da planilha. Se a categoria digitada não bater com nenhuma categoria existente, o produto vai automaticamente para uma categoria "Mix". A coluna Categoria tem um menu suspenso com as categorias existentes (a lista completa fica numa aba separada chamada "Categorias", só como referência — não precisa editar lá); Ativo, EmPromocao e Exposicao também têm menu com Sim/Não. A planilha se atualiza sozinha sempre que algo muda no site (Pages CMS ou este painel) — use "Exportar para o Google Sheets" só se quiser forçar uma atualização imediata.</p>
     </div>
     <div id="resultados"></div>
   </div>
@@ -228,8 +247,6 @@
   var senhaInput = document.getElementById('senha');
   var btnCarregar = document.getElementById('btn-carregar');
   var btnSalvar = document.getElementById('btn-salvar');
-  var btnExportarCsv = document.getElementById('btn-exportar-csv');
-  var inputImportarCsv = document.getElementById('input-importar-csv');
   var btnImportarSheets = document.getElementById('btn-importar-sheets');
   var btnExportarSheets = document.getElementById('btn-exportar-sheets');
   var msgEl = document.getElementById('msg');
@@ -334,9 +351,35 @@
         estoqueWrap.appendChild(estoqueLabel);
         estoqueWrap.appendChild(estoqueInput);
 
+        var precoWrap = document.createElement('span');
+        precoWrap.className = 'preco-wrap';
+        var precoLabel = document.createElement('span');
+        precoLabel.textContent = 'Preço: R$';
+        var precoInput = document.createElement('input');
+        precoInput.type = 'number';
+        precoInput.min = '0';
+        precoInput.step = '0.01';
+        precoInput.className = 'preco-input';
+        precoInput.dataset.path = prod.path;
+        precoInput.value = prod.preco || '';
+        precoWrap.appendChild(precoLabel);
+        precoWrap.appendChild(precoInput);
+
+        var promoWrap = document.createElement('label');
+        promoWrap.className = 'promo-wrap';
+        var promoCheckbox = document.createElement('input');
+        promoCheckbox.type = 'checkbox';
+        promoCheckbox.checked = !!prod.em_promocao;
+        promoCheckbox.className = 'promo-checkbox';
+        promoCheckbox.dataset.path = prod.path;
+        promoWrap.appendChild(promoCheckbox);
+        promoWrap.appendChild(document.createTextNode(' Promoção'));
+
         row.appendChild(checkbox);
         row.appendChild(label);
+        row.appendChild(precoWrap);
         row.appendChild(estoqueWrap);
+        row.appendChild(promoWrap);
         row.appendChild(status);
         block.appendChild(row);
       });
@@ -384,14 +427,6 @@
     }
   }
 
-  function csvCampo(valor) {
-    var str = valor === null || valor === undefined ? '' : String(valor);
-    if (str.indexOf(';') !== -1 || str.indexOf('"') !== -1 || str.indexOf('\n') !== -1) {
-      return '"' + str.replace(/"/g, '""') + '"';
-    }
-    return str;
-  }
-
   function parseCsvLinha(linha, delim) {
     var resultado = [];
     var atual = '';
@@ -418,7 +453,6 @@
     return resultado;
   }
 
-  var CABECALHO_PLANILHA = ['Caminho (não editar)', 'Categoria', 'Produto', 'Codigo', 'Preco', 'EmPromocao', 'PrecoPromocional', 'Estoque', 'Ativo', 'Exposicao'];
   var MARCADOR_CATEGORIAS = '#CATEGORIAS_DISPONIVEIS';
   var CATEGORIA_MIX = 'Mix';
 
@@ -427,54 +461,6 @@
       .filter(function (c) { return c.ativo; })
       .map(function (c) { return c.title; })
       .sort(function (a, b) { return a.localeCompare(b); });
-  }
-
-  function montarLinhasProdutos() {
-    var linhas = [CABECALHO_PLANILHA];
-    dados.produtos.slice()
-      .sort(function (a, b) { return a.title.localeCompare(b.title); })
-      .forEach(function (p) {
-        linhas.push([
-          p.path,
-          p.categoria || '',
-          p.title,
-          p.codigo || '',
-          p.preco || '',
-          p.em_promocao ? 'Sim' : 'Nao',
-          p.preco_promocional || '',
-          p.estoque || '',
-          p.ativo ? 'Sim' : 'Nao',
-          p.exposicao ? 'Sim' : 'Nao'
-        ]);
-      });
-
-    // Lista as categorias existentes como referência visual (a pessoa não
-    // precisa adivinhar o nome certo). Tudo a partir do marcador é ignorado
-    // na importação — ver corte em processarCsvImportado.
-    linhas.push([MARCADOR_CATEGORIAS, 'Categorias existentes — use exatamente um destes nomes na coluna Categoria:', '', '', '', '', '', '', '', '']);
-    categoriasAtivasOrdenadas().forEach(function (nomeCat) {
-      linhas.push(['', nomeCat, '', '', '', '', '', '', '', '']);
-    });
-    linhas.push(['', 'Categoria não reconhecida vira automaticamente "' + CATEGORIA_MIX + '" ao importar.', '', '', '', '', '', '', '', '']);
-
-    return linhas;
-  }
-
-  function exportarCsv() {
-    var linhas = montarLinhasProdutos().map(function (linha) {
-      return linha.map(csvCampo).join(';');
-    });
-
-    var conteudo = '﻿' + linhas.join('\r\n');
-    var blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'estoque-padaria-vila-nova-' + new Date().toISOString().slice(0, 10) + '.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   }
 
   function mostrarProblemasImportacao(problemas) {
@@ -809,8 +795,6 @@
       .finally(function () { btnCarregar.disabled = false; });
   });
 
-  btnExportarCsv.addEventListener('click', exportarCsv);
-
   btnExportarSheets.addEventListener('click', function () {
     btnExportarSheets.disabled = true;
     setMsg('Gravando na planilha do Google Sheets...', '');
@@ -892,33 +876,12 @@
       .finally(function () { btnImportarSheets.disabled = false; });
   });
 
-  inputImportarCsv.addEventListener('change', function () {
-    var file = inputImportarCsv.files && inputImportarCsv.files[0];
-    if (!file) return;
-    inputImportarCsv.disabled = true;
-    atualizarCatalogoAntesDeImportar()
-      .then(function () {
-        return new Promise(function (resolve, reject) {
-          var reader = new FileReader();
-          reader.onload = function (e) { resolve(e.target.result); };
-          reader.onerror = function () { reject(new Error('Não foi possível ler o arquivo.')); };
-          reader.readAsText(file, 'UTF-8');
-        });
-      })
-      .then(function (texto) {
-        processarCsvImportado(texto);
-      })
-      .catch(function (err) {
-        if (err.message !== '__cancelado__') setMsg(err.message, 'erro');
-      })
-      .finally(function () {
-        inputImportarCsv.disabled = false;
-        inputImportarCsv.value = '';
-      });
-  });
 
   btnSalvar.addEventListener('click', function () {
-    var checkboxes = listaEl.querySelectorAll('input[type="checkbox"]');
+    // Usa [data-kind] (não input[type="checkbox"]) porque a caixinha de
+    // "Promoção" também é um checkbox, mas não representa o campo "ativo" —
+    // pegar todo checkbox junto criaria um item errado pra ela.
+    var checkboxes = listaEl.querySelectorAll('input[data-kind]');
     var items = Array.prototype.map.call(checkboxes, function (cb) {
       var item = { path: cb.dataset.path, ativo: cb.checked };
       if (cb.dataset.kind === 'produto') {
@@ -926,6 +889,14 @@
         var estoqueInput = row ? row.querySelector('.estoque-input') : null;
         if (estoqueInput && estoqueInput.value !== '') {
           item.estoque = Number(estoqueInput.value);
+        }
+        var precoInput = row ? row.querySelector('.preco-input') : null;
+        if (precoInput && precoInput.value !== '') {
+          item.preco = precoInput.value;
+        }
+        var promoCheckbox = row ? row.querySelector('.promo-checkbox') : null;
+        if (promoCheckbox) {
+          item.em_promocao = promoCheckbox.checked;
         }
       }
       return item;

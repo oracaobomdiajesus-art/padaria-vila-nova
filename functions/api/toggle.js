@@ -14,9 +14,17 @@ const MAX_ITEMS = 100;
 function parseEstoque(path, estoqueRaw) {
   if (!path.startsWith("content/produtos/")) return { estoque: null };
   if (estoqueRaw === undefined || estoqueRaw === null || estoqueRaw === "") return { estoque: null };
-  const n = Number(estoqueRaw);
+  const n = Number(String(estoqueRaw).trim().replace(",", "."));
   if (!Number.isInteger(n) || n < 0) return { error: "Valor de 'estoque' inválido" };
   return { estoque: n };
+}
+
+function parsePreco(path, precoRaw) {
+  if (!path.startsWith("content/produtos/")) return { preco: null };
+  if (precoRaw === undefined || precoRaw === null || precoRaw === "") return { preco: null };
+  const n = Number(String(precoRaw).trim().replace(",", "."));
+  if (!isFinite(n) || n < 0) return { error: "Valor de 'preco' inválido" };
+  return { preco: n };
 }
 
 async function toggleOne(env, item) {
@@ -35,6 +43,16 @@ async function toggleOne(env, item) {
     return { path, ok: false, error: estoqueError };
   }
 
+  const { preco, error: precoError } = parsePreco(path, item && item.preco);
+  if (precoError) {
+    return { path, ok: false, error: precoError };
+  }
+
+  const emPromocao =
+    path.startsWith("content/produtos/") && typeof (item && item.em_promocao) === "boolean"
+      ? item.em_promocao
+      : null;
+
   try {
     const getRes = await githubApi(env, `contents/${path}?ref=${BRANCH}`);
     if (!getRes.ok) {
@@ -46,6 +64,12 @@ async function toggleOne(env, item) {
     let newContent = setFrontMatterField(currentContent, "ativo", ativo ? "true" : "false");
     if (estoque !== null) {
       newContent = setFrontMatterField(newContent, "estoque", String(estoque));
+    }
+    if (preco !== null) {
+      newContent = setFrontMatterField(newContent, "preco", String(preco));
+    }
+    if (emPromocao !== null) {
+      newContent = setFrontMatterField(newContent, "em_promocao", emPromocao ? "true" : "false");
     }
 
     if (newContent === currentContent) {
