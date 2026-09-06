@@ -1,0 +1,60 @@
+{{ $waNumber := replaceRE "[^0-9]" "" (.Site.Home.Params.whatsapp_url | default "") }}
+{{ $pixKey := .Site.Home.Params.chave_pix | default "" }}
+
+<div id="cart-app" data-wa-number="{{ $waNumber }}" data-pix-key="{{ $pixKey }}">
+  <button type="button" id="cart-toggle" class="cart-fab" aria-label="Abrir carrinho">
+    <i class="fa-solid fa-cart-shopping"></i>
+    <span id="cart-badge" class="cart-badge" hidden>0</span>
+  </button>
+
+  <div id="cart-sticky-bar" class="cart-sticky-bar" hidden>
+    <div class="cart-sticky-info">
+      <span id="sticky-count" class="cart-sticky-count">0 itens</span>
+      <strong id="sticky-total" class="cart-sticky-total">R$ 0,00</strong>
+    </div>
+    <button type="button" id="sticky-cart-btn" class="btn-sticky-cart">
+      <i class="fa-solid fa-cart-shopping"></i> Ver carrinho
+    </button>
+  </div>
+
+  <div id="cart-overlay" class="cart-overlay" hidden></div>
+
+  <aside id="cart-panel" class="cart-panel">
+    <div class="cart-panel-header">
+      <h2>Seu carrinho</h2>
+      <button type="button" id="cart-close" class="cart-close" aria-label="Fechar carrinho">&times;</button>
+    </div>
+
+    <div id="cart-items" class="cart-items"></div>
+    <p id="cart-empty" class="cart-empty">Seu carrinho está vazio.</p>
+
+    <div class="cart-total-row">
+      <span>Subtotal</span>
+      <strong id="cart-total">R$ 0,00</strong>
+    </div>
+
+    {{ if $pixKey }}
+    <div class="pix-box">
+      <p class="pix-label"><strong>Chave Pix:</strong></p>
+      <div class="pix-key-row">
+        <code id="pix-key-text">{{ $pixKey }}</code>
+        <button type="button" id="pix-copy-btn" class="btn-pix-copy">Copiar</button>
+      </div>
+    </div>
+    {{ end }}
+
+    <p id="pagamento-online-erro" class="pagamento-online-erro" hidden></p>
+
+    <div class="cart-actions">
+      <button type="button" id="btn-pagar-online" class="btn-checkout btn-checkout-online">
+        <i class="fa-solid fa-credit-card"></i> Pagar online (Mercado Pago)
+      </button>
+      <button type="button" id="btn-send-order" class="btn-checkout btn-checkout-whatsapp">
+        <i class="fa-brands fa-whatsapp"></i> Enviar pedido pelo WhatsApp
+      </button>
+      <button type="button" id="btn-send-paid" class="btn-checkout btn-checkout-pix">
+        <i class="fa-solid fa-check"></i> Já paguei via Pix — enviar pedido
+      </button>
+    </div>
+  </aside>
+</div>

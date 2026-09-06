@@ -107,13 +107,14 @@
     var app = document.getElementById('cart-app');
     var sendBtn = document.getElementById('btn-send-order');
     var paidBtn = document.getElementById('btn-send-paid');
+    var onlineBtn = document.getElementById('btn-pagar-online');
     if (!app) return;
 
     var cart = loadCart();
     var waNumber = app.dataset.waNumber;
     var disabled = cart.length === 0;
 
-    [sendBtn, paidBtn].forEach(function (btn) {
+    [sendBtn, paidBtn, onlineBtn].forEach(function (btn) {
       if (btn) btn.disabled = disabled;
     });
 
@@ -258,6 +259,56 @@
     if (totalEl) totalEl.textContent = formatPrice(cartTotal(cart));
   }
 
+  // O carrinho manda só slug + quantidade — nunca o preço. O preço de
+  // verdade é sempre recalculado no servidor a partir do catálogo atual,
+  // pra ninguém conseguir pagar um valor diferente do real mexendo no
+  // navegador.
+  function setupPagamentoOnline() {
+    var btn = document.getElementById('btn-pagar-online');
+    var erroEl = document.getElementById('pagamento-online-erro');
+    if (!btn) return;
+
+    btn.addEventListener('click', function () {
+      var cart = loadCart();
+      if (cart.length === 0) return;
+
+      if (erroEl) {
+        erroEl.hidden = true;
+        erroEl.textContent = '';
+      }
+      btn.disabled = true;
+      var textoOriginal = btn.innerHTML;
+      btn.textContent = 'Preparando pagamento...';
+
+      var itens = cart.map(function (item) {
+        return { slug: item.slug, qty: item.qty };
+      });
+
+      fetch('/api/pagamento', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itens: itens })
+      })
+        .then(function (res) {
+          return res.json().then(function (data) {
+            if (!res.ok) throw new Error(data.error || 'Não foi possível iniciar o pagamento.');
+            return data;
+          });
+        })
+        .then(function (data) {
+          window.location.href = data.init_point;
+        })
+        .catch(function (err) {
+          if (erroEl) {
+            erroEl.textContent = err.message;
+            erroEl.hidden = false;
+          }
+          btn.disabled = false;
+          btn.innerHTML = textoOriginal;
+        });
+    });
+  }
+
   function setupPixCopy() {
     var btn = document.getElementById('pix-copy-btn');
     var app = document.getElementById('cart-app');
@@ -284,6 +335,7 @@
   document.addEventListener('DOMContentLoaded', function () {
     renderCart();
     setupPixCopy();
+    setupPagamentoOnline();
 
     var addButtons = document.querySelectorAll('.btn-add-cart');
     addButtons.forEach(function (btn) {

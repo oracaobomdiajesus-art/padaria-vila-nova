@@ -725,6 +725,19 @@ footer {
   background: var(--primary);
 }
 
+.btn-checkout-online {
+  background: #009ee3;
+}
+
+.pagamento-online-erro {
+  background: #FBE0E0;
+  color: #c62828;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
 .cart-sticky-bar {
   position: fixed;
   left: 0;
