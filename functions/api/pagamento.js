@@ -93,12 +93,6 @@ export async function onRequestPost(context) {
           failure: `${origem}/pagamento/erro/`,
         },
         auto_return: "approved",
-        // "ticket" é o tipo de pagamento do boleto no Mercado Pago — exclui
-        // ele porque não faz sentido pra uma compra pequena numa padaria
-        // (o comprador teria que esperar o boleto compensar pra retirar).
-        payment_methods: {
-          excluded_payment_types: [{ id: "ticket" }],
-        },
       }),
     });
 
