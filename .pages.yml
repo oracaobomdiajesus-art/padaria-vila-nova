@@ -83,16 +83,20 @@ content:
         label: "URL do WhatsApp"
         type: "string"
       - name: "chave_pix"
-        label: "Chave Pix (ou Pix copia e cola)"
+        label: "Chave Pix"
+        description: "Ou Pix copia e cola"
         type: "string"
       - name: "video_youtube_url"
-        label: "Link do vídeo no YouTube (opcional)"
+        label: "Link do vídeo no YouTube"
+        description: "Opcional"
         type: "string"
       - name: "video_titulo"
-        label: "Título/legenda do vídeo (opcional)"
+        label: "Título/legenda do vídeo"
+        description: "Opcional"
         type: "string"
       - name: "google_avaliacao_url"
-        label: "Link para avaliar no Google (opcional)"
+        label: "Link para avaliar no Google"
+        description: "Opcional"
         type: "string"
       - name: "tema_cor"
         label: "Tema de cor do site"
@@ -116,6 +120,7 @@ content:
     format: "yaml-frontmatter"
     view:
       primary: "title"
+      fields: [title, link_url, peso]
       default:
         sort: "peso"
         order: "asc"
@@ -133,7 +138,8 @@ content:
         type: "string"
         required: true
       - name: "icone"
-        label: "Ícone (classe Font Awesome, opcional)"
+        label: "Ícone"
+        description: "Classe Font Awesome, opcional"
         type: "string"
       - name: "peso"
         label: "Ordem de exibição"
@@ -164,6 +170,7 @@ content:
     format: "yaml-frontmatter"
     view:
       primary: "title"
+      fields: [title, ativo]
       default:
         sort: "title"
         order: "asc"
@@ -173,7 +180,8 @@ content:
         type: "string"
         required: true
       - name: "ativo"
-        label: "Categoria ativa (desligue para esconder todos os produtos dela de uma vez)"
+        label: "Categoria ativa"
+        description: "Desligue para esconder todos os produtos dela de uma vez"
         type: "boolean"
         default: true
 
@@ -184,6 +192,7 @@ content:
     format: "yaml-frontmatter"
     view:
       primary: "title"
+      fields: [title, categoria, preco, ativo, peso]
       default:
         sort: "peso"
         order: "asc"
@@ -197,21 +206,25 @@ content:
         type: "string"
         required: true
       - name: "preco"
-        label: "Preço cheio (em reais, ex: 12.50)"
+        label: "Preço cheio"
+        description: "Em reais, ex: 12.50"
         type: "number"
         required: true
       - name: "codigo"
-        label: "Código do produto (ex: 001, 002 — você escolhe)"
+        label: "Código do produto"
+        description: "Ex: 001, 002 — você escolhe"
         type: "string"
       - name: "em_promocao"
         label: "Produto em promoção?"
         type: "boolean"
         default: false
       - name: "preco_promocional"
-        label: "Preço promocional (em reais, ex: 9.90 — só vale se 'Produto em promoção' estiver ligado)"
+        label: "Preço promocional"
+        description: "Em reais, ex: 9.90 — só vale se 'Produto em promoção' estiver ligado"
         type: "number"
       - name: "exposicao"
-        label: "Destaque fixo na página inicial (só vale se estiver em promoção)"
+        label: "Destaque na página inicial"
+        description: "Só vale se o produto estiver em promoção"
         type: "boolean"
         default: false
       - name: "foto"
@@ -221,10 +234,12 @@ content:
         label: "Descrição"
         type: "text"
       - name: "cores"
-        label: "Cores disponíveis (texto livre, ex: Azul, Verde)"
+        label: "Cores disponíveis"
+        description: "Texto livre, ex: Azul, Verde"
         type: "string"
       - name: "tamanho"
-        label: "Tamanhos disponíveis (texto livre, ex: P, M, G)"
+        label: "Tamanhos disponíveis"
+        description: "Texto livre, ex: P, M, G"
         type: "string"
       - name: "categoria"
         label: "Categoria"
@@ -235,13 +250,16 @@ content:
           value: "{fields.title}"
           label: "{fields.title}"
       - name: "estoque"
-        label: "Estoque real (apenas informativo)"
+        label: "Estoque real"
+        description: "Apenas informativo"
         type: "number"
       - name: "estoque_site"
-        label: "Estoque exibido no site (opcional — pode ser diferente do real, usado como estratégia de escassez)"
+        label: "Estoque exibido no site"
+        description: "Opcional — pode ser diferente do real, usado como estratégia de escassez"
         type: "number"
       - name: "ativo"
-        label: "Produto ativo (aparece no catálogo)"
+        label: "Produto ativo"
+        description: "Aparece no catálogo quando ligado"
         type: "boolean"
         default: true
       - name: "peso"
@@ -273,6 +291,7 @@ content:
     format: "yaml-frontmatter"
     view:
       primary: "legenda"
+      fields: [legenda, peso]
       default:
         sort: "peso"
         order: "asc"
@@ -282,7 +301,8 @@ content:
         type: "image"
         required: true
       - name: "legenda"
-        label: "Legenda (opcional)"
+        label: "Legenda"
+        description: "Opcional"
         type: "text"
       - name: "peso"
         label: "Ordem de exibição"
