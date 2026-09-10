@@ -1,10 +1,12 @@
 (function () {
   var input = document.getElementById('catalogo-busca');
-  var btnToggle = document.getElementById('btn-abrir-todas');
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.cat-tab'));
   var grupos = Array.prototype.slice.call(document.querySelectorAll('.categoria-group'));
   var vazioMsg = document.getElementById('busca-vazio');
 
-  if (!input && !btnToggle) return;
+  if (!input && !tabs.length) return;
+
+  var categoriaAtiva = '';
 
   function normalizar(texto) {
     return (texto || '').toLowerCase();
@@ -15,38 +17,35 @@
     var algumVisivel = false;
 
     grupos.forEach(function (grupo) {
+      var pertenceCategoria = !categoriaAtiva || grupo.dataset.categoria === categoriaAtiva;
       var cards = grupo.querySelectorAll('.product-card');
       var temResultado = false;
 
       cards.forEach(function (card) {
         var texto = normalizar(card.dataset.busca);
-        var combina = !termo || texto.indexOf(termo) !== -1;
+        var combina = pertenceCategoria && (!termo || texto.indexOf(termo) !== -1);
         card.hidden = !combina;
         if (combina) temResultado = true;
       });
 
-      grupo.hidden = termo !== '' && !temResultado;
-      if (termo !== '') {
-        grupo.open = temResultado;
-      }
+      grupo.hidden = !temResultado;
       if (temResultado) algumVisivel = true;
     });
 
-    if (vazioMsg) vazioMsg.hidden = !(termo !== '' && !algumVisivel);
+    if (vazioMsg) vazioMsg.hidden = algumVisivel;
   }
+
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      categoriaAtiva = tab.dataset.categoria;
+      tabs.forEach(function (t) { t.classList.toggle('active', t === tab); });
+      aplicarFiltro();
+    });
+  });
 
   if (input) {
     input.addEventListener('input', aplicarFiltro);
   }
 
-  if (btnToggle) {
-    btnToggle.addEventListener('click', function () {
-      var vaiAbrir = btnToggle.dataset.state !== 'open';
-      grupos.forEach(function (grupo) {
-        if (!grupo.hidden) grupo.open = vaiAbrir;
-      });
-      btnToggle.dataset.state = vaiAbrir ? 'open' : 'closed';
-      btnToggle.textContent = vaiAbrir ? 'Fechar todas' : 'Abrir todas';
-    });
-  }
+  aplicarFiltro();
 })();

@@ -236,6 +236,43 @@ footer {
   opacity: 0.8;
 }
 
+.cat-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 12px 0;
+  margin: 0 0 16px;
+  background: var(--secondary);
+}
+
+.cat-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.cat-tab {
+  flex: none;
+  border: none;
+  border-radius: 999px;
+  padding: 9px 16px;
+  background: var(--card-bg);
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  white-space: nowrap;
+}
+
+.cat-tab.active {
+  background: var(--primary);
+  color: #fff;
+}
+
 .catalog-controls {
   display: flex;
   flex-wrap: wrap;
@@ -270,26 +307,11 @@ footer {
   color: var(--text);
 }
 
-.btn-toggle-all {
-  border: none;
-  border-radius: 10px;
-  padding: 0 16px;
-  background: var(--card-bg);
-  color: var(--primary);
-  font-weight: 600;
-  font-size: 0.85rem;
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  white-space: nowrap;
-}
-
 .categoria-group {
   margin-bottom: 16px;
 }
 
-.categoria-group summary {
-  list-style: none;
-  cursor: pointer;
+.categoria-heading {
   color: var(--primary);
   font-size: 1.2rem;
   font-weight: 700;
@@ -300,24 +322,6 @@ footer {
   justify-content: space-between;
 }
 
-.categoria-group summary::-webkit-details-marker {
-  display: none;
-}
-
-.categoria-group summary::after {
-  content: "\f078";
-  font-family: "Font Awesome 6 Free";
-  font-weight: 900;
-  font-size: 0.85rem;
-  transition: transform 0.2s ease;
-  color: var(--primary);
-  opacity: 0.7;
-}
-
-.categoria-group[open] summary::after {
-  transform: rotate(180deg);
-}
-
 .categoria-group .cat-count {
   font-size: 0.85rem;
   font-weight: 400;
@@ -326,12 +330,8 @@ footer {
   margin-left: 6px;
 }
 
-.categoria-promocoes summary {
+.categoria-promocoes .categoria-heading {
   border-bottom-color: #E8871E;
-}
-
-.categoria-promocoes summary::after {
-  color: #E8871E;
 }
 
 .categoria-group .product-grid {

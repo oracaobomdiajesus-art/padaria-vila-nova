@@ -85,17 +85,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    cursor: pointer;
-    list-style: none;
   }
-  .categoria-header::-webkit-details-marker { display: none; }
-  .categoria-header::after {
-    content: '▾';
-    margin-left: auto;
-    opacity: 0.6;
-    transition: transform 0.15s ease;
-  }
-  details[open] > .categoria-header::after { transform: rotate(180deg); }
   .categoria-title {
     display: flex;
     align-items: center;
@@ -104,7 +94,38 @@
     color: var(--primary);
   }
   .categoria-count { font-size: 0.8rem; opacity: 0.6; font-weight: 400; }
-  .categoria-promocoes > summary .categoria-title { color: #d32f2f; }
+  .categoria-promocoes .categoria-title { color: #d32f2f; }
+  .cat-tabs-admin {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: -16px -16px 12px;
+    padding: 12px 16px;
+    background: var(--card-bg);
+    border-radius: 12px 12px 0 0;
+  }
+  .cat-tabs-admin:empty { display: none; }
+  .cat-tabs-admin::-webkit-scrollbar { display: none; }
+  .cat-tab-admin {
+    flex: none;
+    border: none;
+    border-radius: 999px;
+    padding: 7px 14px;
+    background: #F3EDE1;
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .cat-tab-admin.active {
+    background: var(--primary);
+    color: #fff;
+  }
   .promo-resumo-item {
     padding: 6px 0 6px 24px;
     font-size: 0.88rem;
@@ -184,7 +205,6 @@
     color: var(--text);
   }
   .filtros-row input[type="search"] { flex: 1; min-width: 160px; }
-  #btn-abrir-todas { white-space: nowrap; }
   .filtro-contador { font-size: 0.78rem; opacity: 0.7; margin: 0 0 12px; min-height: 1.1em; }
   #resultados { margin-top: 16px; }
   .resultado-item {
@@ -261,6 +281,7 @@
   </div>
 
   <div class="card" id="conteudo" hidden>
+    <nav class="cat-tabs-admin" id="cat-tabs-admin" aria-label="Categorias"></nav>
     <div class="filtros-row">
       <input type="search" id="admin-busca" placeholder="Buscar produto..." aria-label="Buscar produto">
       <select id="filtro-categoria" aria-label="Filtrar por categoria">
@@ -276,7 +297,6 @@
         <option value="ativo">Ativos</option>
         <option value="inativo">Inativos</option>
       </select>
-      <button type="button" class="btn-secondary" id="btn-abrir-todas" data-state="closed">Abrir todas</button>
     </div>
     <p class="filtro-contador" id="filtro-contador"></p>
     <div id="lista"></div>
@@ -320,8 +340,8 @@
   var filtroCategoria = document.getElementById('filtro-categoria');
   var filtroPromocao = document.getElementById('filtro-promocao');
   var filtroStatus = document.getElementById('filtro-status');
-  var btnAbrirTodas = document.getElementById('btn-abrir-todas');
   var filtroContadorEl = document.getElementById('filtro-contador');
+  var catTabsEl = document.getElementById('cat-tabs-admin');
 
   var senhaAtual = '';
   var dados = { categorias: [], produtos: [] };
@@ -357,10 +377,10 @@
       .sort(function (a, b) { return a.title.localeCompare(b.title); });
 
     if (produtosPromocao.length) {
-      var promoBlock = document.createElement('details');
+      var promoBlock = document.createElement('div');
       promoBlock.className = 'categoria-block categoria-promocoes';
 
-      var promoSummary = document.createElement('summary');
+      var promoSummary = document.createElement('div');
       promoSummary.className = 'categoria-header';
       var promoTitleWrap = document.createElement('span');
       promoTitleWrap.className = 'categoria-title';
@@ -395,10 +415,10 @@
     dados.categorias.slice().sort(function (a, b) { return a.title.localeCompare(b.title); }).forEach(function (cat) {
       var produtosDaCategoria = dados.produtos.filter(function (p) { return p.categoria === cat.title; });
 
-      var block = document.createElement('details');
+      var block = document.createElement('div');
       block.className = 'categoria-block';
 
-      var header = document.createElement('summary');
+      var header = document.createElement('div');
       header.className = 'categoria-header';
 
       var titleWrap = document.createElement('span');
@@ -408,10 +428,6 @@
       catCheckbox.checked = !!cat.ativo;
       catCheckbox.dataset.path = cat.path;
       catCheckbox.dataset.kind = 'categoria';
-      // Sem isto, clicar na caixinha também abriria/fecharia a categoria,
-      // porque ela mora dentro do <summary> (só assim fica visível mesmo
-      // com a categoria recolhida).
-      catCheckbox.addEventListener('click', function (e) { e.stopPropagation(); });
 
       var catStatus = document.createElement('span');
       catStatus.className = 'status ' + (cat.ativo ? 'ativo' : 'inativo');
@@ -545,7 +561,50 @@
     });
     filtroCategoria.value = categoriaSelecionada;
 
+    renderTabsCategorias();
     aplicarFiltros();
+  }
+
+  // Atalho no topo (fixo ao rolar) que reaproveita o mesmo filtro de
+  // categoria já existente — clicar numa aba só muda o <select> e roda o
+  // mesmo filtro, em vez de duplicar a lógica de mostrar/esconder.
+  function renderTabsCategorias() {
+    var categoriaAtual = filtroCategoria.value;
+    catTabsEl.innerHTML = '';
+
+    var todas = document.createElement('button');
+    todas.type = 'button';
+    todas.className = 'cat-tab-admin' + (categoriaAtual === '' ? ' active' : '');
+    todas.dataset.categoria = '';
+    todas.textContent = 'Todas';
+    todas.addEventListener('click', function () {
+      filtroCategoria.value = '';
+      sincronizarTabsAtivas();
+      aplicarFiltros();
+    });
+    catTabsEl.appendChild(todas);
+
+    dados.categorias.slice().sort(function (a, b) { return a.title.localeCompare(b.title); }).forEach(function (cat) {
+      var tab = document.createElement('button');
+      tab.type = 'button';
+      tab.className = 'cat-tab-admin' + (categoriaAtual === cat.title ? ' active' : '');
+      tab.dataset.categoria = cat.title;
+      tab.textContent = cat.title;
+      tab.addEventListener('click', function () {
+        filtroCategoria.value = cat.title;
+        sincronizarTabsAtivas();
+        aplicarFiltros();
+      });
+      catTabsEl.appendChild(tab);
+    });
+  }
+
+  function sincronizarTabsAtivas() {
+    var categoriaAtual = filtroCategoria.value;
+    var tabs = catTabsEl.querySelectorAll('.cat-tab-admin');
+    tabs.forEach(function (tab) {
+      tab.classList.toggle('active', tab.dataset.categoria === categoriaAtual);
+    });
   }
 
   function aplicarFiltros() {
@@ -582,7 +641,6 @@
       });
 
       bloco.hidden = !algumVisivel;
-      if (filtroAtivo) bloco.open = algumVisivel;
     });
 
     filtroContadorEl.textContent = filtroAtivo ? (totalVisiveis + ' de ' + totalGeral + ' produtos') : '';
@@ -1110,19 +1168,12 @@
   }
 
   buscaInput.addEventListener('input', aplicarFiltros);
-  filtroCategoria.addEventListener('change', aplicarFiltros);
+  filtroCategoria.addEventListener('change', function () {
+    sincronizarTabsAtivas();
+    aplicarFiltros();
+  });
   filtroPromocao.addEventListener('change', aplicarFiltros);
   filtroStatus.addEventListener('change', aplicarFiltros);
-
-  btnAbrirTodas.addEventListener('click', function () {
-    var vaiAbrir = btnAbrirTodas.dataset.state !== 'open';
-    var blocos = listaEl.querySelectorAll('.categoria-block');
-    blocos.forEach(function (bloco) {
-      if (!bloco.hidden) bloco.open = vaiAbrir;
-    });
-    btnAbrirTodas.dataset.state = vaiAbrir ? 'open' : 'closed';
-    btnAbrirTodas.textContent = vaiAbrir ? 'Fechar todas' : 'Abrir todas';
-  });
 
   btnHistorico.addEventListener('click', function () {
     btnHistorico.disabled = true;

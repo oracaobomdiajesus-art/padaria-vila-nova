@@ -26,14 +26,6 @@
 
     {{ $hasProducts := false }}
 
-    <div class="catalog-controls">
-      <div class="search-box">
-        <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="search" id="catalogo-busca" placeholder="Buscar produto..." aria-label="Buscar produto">
-      </div>
-      <button type="button" id="btn-abrir-todas" class="btn-toggle-all" data-state="closed">Abrir todas</button>
-    </div>
-
     {{ $promoProdutos := slice }}
     {{ range where $.Pages "Params.ativo" true }}
       {{ if and .Params.em_promocao .Params.preco_promocional (in $activeCatTitles .Params.categoria) }}
@@ -42,31 +34,48 @@
     {{ end }}
     {{ $promoProdutos = sort $promoProdutos "Params.peso" }}
 
+    <nav class="cat-tabs" id="cat-tabs" aria-label="Categorias">
+      <button type="button" class="cat-tab active" data-categoria="">Todas</button>
+      {{ if $promoProdutos }}
+      <button type="button" class="cat-tab" data-categoria="__promo__">🔥 Promoções</button>
+      {{ end }}
+      {{ range $activeCats }}
+      <button type="button" class="cat-tab" data-categoria="{{ .Title }}">{{ .Title }}</button>
+      {{ end }}
+    </nav>
+
+    <div class="catalog-controls">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="search" id="catalogo-busca" placeholder="Buscar produto..." aria-label="Buscar produto">
+      </div>
+    </div>
+
     <div id="lista-categorias">
     {{ if $promoProdutos }}
       {{ $hasProducts = true }}
-      <details class="categoria-group categoria-promocoes">
-        <summary>🔥 Promoções <span class="cat-count">({{ len $promoProdutos }})</span></summary>
+      <div class="categoria-group categoria-promocoes" data-categoria="__promo__">
+        <div class="categoria-heading">🔥 Promoções <span class="cat-count">({{ len $promoProdutos }})</span></div>
         <div class="product-grid">
           {{ range $promoProdutos }}
           {{ partial "product-card.html" . }}
           {{ end }}
         </div>
-      </details>
+      </div>
     {{ end }}
     {{ range $activeCats }}
       {{ $catTitle := .Title }}
       {{ $prods := sort (where (where $.Pages "Params.categoria" $catTitle) "Params.ativo" true) "Params.peso" }}
       {{ if $prods }}
         {{ $hasProducts = true }}
-      <details class="categoria-group">
-        <summary>{{ $catTitle }} <span class="cat-count">({{ len $prods }})</span></summary>
+      <div class="categoria-group" data-categoria="{{ $catTitle }}">
+        <div class="categoria-heading">{{ $catTitle }} <span class="cat-count">({{ len $prods }})</span></div>
         <div class="product-grid">
           {{ range $prods }}
           {{ partial "product-card.html" . }}
           {{ end }}
         </div>
-      </details>
+      </div>
       {{ end }}
     {{ end }}
     </div>
