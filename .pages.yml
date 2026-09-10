@@ -112,6 +112,16 @@ content:
               label: "Rosa"
             - value: "azul"
               label: "Azul"
+      - name: "fundo_imagem"
+        label: "Usar imagem de fundo no site"
+        description: "Liga ou desliga a foto de fundo (a imagem já enviada no projeto, static/img/fundo-padaria.jpg)"
+        type: "boolean"
+        default: true
+      - name: "fundo_opacidade"
+        label: "Opacidade da camada sobre a imagem de fundo"
+        description: "De 0 (foto bem viva, quase sem filtro) a 100 (foto quase escondida). Sugestão: entre 30 e 55."
+        type: "number"
+        default: 40
 
   - name: "links"
     label: "Links"

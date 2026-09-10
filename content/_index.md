@@ -6,4 +6,6 @@ instagram_url: https://www.instagram.com/alanamoraisctba?igsi=a2hxbXlhZGY3dmd5
 whatsapp_url: https://wa.me/5541996497311
 chave_pix: "41996497311"
 tema_cor: verde
+fundo_imagem: true
+fundo_opacidade: 40
 ---

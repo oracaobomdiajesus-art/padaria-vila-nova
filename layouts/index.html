@@ -12,9 +12,7 @@
 </head>
 <body>
   <main class="profile-card">
-    <div class="profile-cover">
-      <img class="avatar" src="{{ .Params.foto_perfil | default "/img/perfil.svg" | relURL }}" alt="{{ .Title }}">
-    </div>
+    <img class="avatar" src="{{ .Params.foto_perfil | default "/img/perfil.svg" | relURL }}" alt="{{ .Title }}">
     <h1>{{ .Title }}</h1>
     <p class="bio">{{ .Params.bio }}</p>
 

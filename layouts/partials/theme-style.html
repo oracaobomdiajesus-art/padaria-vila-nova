@@ -14,3 +14,15 @@
 </style>
   {{ end }}
 {{ end }}
+
+{{ if .Site.Home.Params.fundo_imagem }}
+  {{ $op := .Site.Home.Params.fundo_opacidade | default 40 }}
+  {{ $alpha := div $op 100.0 }}
+<style>
+  body {
+    background:
+      linear-gradient(180deg, rgba(245, 222, 179, {{ printf "%.2f" $alpha }}) 0%, rgba(255, 248, 236, {{ printf "%.2f" $alpha }}) 100%),
+      url("/img/fundo-padaria.jpg") center / cover fixed;
+  }
+</style>
+{{ end }}

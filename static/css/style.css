@@ -35,29 +35,12 @@ body {
   text-align: center;
 }
 
-/* Foto de capa atrás do avatar, no estilo "perfil de rede social" — a
-   própria borda arredondada já recorta a imagem, sem precisar de
-   overflow:hidden (que cortaria o avatar, que propositalmente ultrapassa
-   a borda de baixo). */
-.profile-cover {
-  position: relative;
-  width: 100%;
-  height: 140px;
-  border-radius: 20px;
-  background: url("/img/fundo-padaria.jpg") center / cover;
-  margin-bottom: 56px;
-}
-
 .avatar {
-  position: absolute;
-  left: 50%;
-  bottom: -48px;
-  transform: translateX(-50%);
   width: 96px;
   height: 96px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid #fff;
+  border: 3px solid var(--primary);
   box-shadow: 0 4px 12px rgba(139, 69, 19, 0.25);
   background: #fff;
 }
