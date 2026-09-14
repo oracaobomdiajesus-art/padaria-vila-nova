@@ -1,0 +1,37 @@
+backend:
+  name: github
+  repo: SEU-USUARIO/SEU-REPOSITORIO
+  branch: main
+
+media_folder: "static/img/uploads"
+public_folder: "/img/uploads"
+
+collections:
+  - name: "profile"
+    label: "Perfil"
+    delete: false
+    editor:
+      preview: false
+    files:
+      - name: "profile"
+        label: "Perfil"
+        file: "content/_index.md"
+        fields:
+          - { name: "title", label: "Nome do negocio", widget: "string" }
+          - { name: "bio", label: "Bio / descricao curta", widget: "text" }
+          - { name: "foto_perfil", label: "Foto de perfil", widget: "image", required: false }
+          - { name: "instagram_url", label: "URL do Instagram", widget: "string", required: false }
+          - { name: "whatsapp_url", label: "URL do WhatsApp", widget: "string", required: false }
+
+  - name: "links"
+    label: "Links"
+    folder: "content/links"
+    create: true
+    slug: "{{slug}}"
+    editor:
+      preview: false
+    fields:
+      - { name: "title", label: "Titulo do link", widget: "string" }
+      - { name: "link_url", label: "URL de destino", widget: "string" }
+      - { name: "icone", label: "Icone (classe Font Awesome, opcional)", widget: "string", required: false }
+      - { name: "peso", label: "Ordem de exibicao (menor aparece primeiro)", widget: "number", default: 10 }
